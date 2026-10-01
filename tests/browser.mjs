@@ -109,7 +109,7 @@ try {
     { tab, url: `${base}/light` },
   );
   await popup.goto(`chrome-extension://${id}/popup.html`);
-  await popup.locator("#site").focus();
+  await popup.locator("#original").focus();
   await popup.keyboard.press("Space");
   await expectStatus("Disabled");
   await second.waitForTimeout(600);
@@ -125,21 +125,29 @@ try {
       .evaluate((e) => getComputedStyle(e).backgroundColor),
     "rgb(255, 255, 255)",
   );
-  await popup.locator("#reset").click();
+  await popup.locator("#auto").check();
   await expectStatus("Afterglow active");
   await page.goto(`${base}/dark`);
   await expectStatus("Native dark theme");
   await popup.reload();
-  await popup.locator("#force").check();
+  await popup.locator("#forced").check();
   await expectStatus("Afterglow active");
   await popup.locator("#global").uncheck();
   await expectStatus("Disabled");
+  assert.equal(await popup.locator("#forced").isChecked(), true);
+  assert.equal(
+    await popup.locator("#status").textContent(),
+    "Afterglow is paused",
+  );
   const saved = await worker.evaluate(() => chrome.storage.local.get(null));
   assert.equal(saved["site:localhost"].force, true);
   await popup.locator("#global").check();
   await expectStatus("Afterglow active");
-  await popup.locator("#reset").click();
+  await popup.locator("#auto").check();
   await expectStatus("Native dark theme");
+  await popup.waitForTimeout(600);
+  assert.equal(await popup.locator("#auto").isChecked(), true);
+  assert.match(await popup.locator("#hint").textContent(), /Always dark/);
   await page.goto(`${base}/light`);
   await expectStatus("Afterglow active");
   await page.evaluate(() => document.body.classList.add("dark"));
@@ -179,7 +187,7 @@ try {
     }
   }
   console.log(
-    "PASS: native detection, theme switching, dynamic content, media, forms, popup, reset, global precedence and cross-tab updates",
+    "PASS: native detection, theme switching, dynamic content, media, forms, popup appearance choices, global precedence and cross-tab updates",
   );
   await worker.evaluate(() =>
     chrome.storage.local.set({

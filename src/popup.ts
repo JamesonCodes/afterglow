@@ -1,33 +1,57 @@
 import { fromStorage, siteFor, supported, hostname } from "./settings";
-const input = (id: string) => document.getElementById(id) as HTMLInputElement;
-const global = input("global"),
-  site = input("site"),
-  force = input("force"),
-  reset = document.getElementById("reset") as HTMLButtonElement;
+const global = document.getElementById("global") as HTMLInputElement;
+const modes = document.getElementById("modes") as HTMLFieldSetElement;
+const radios = [
+  ...document.querySelectorAll<HTMLInputElement>('input[name="mode"]'),
+];
 const text = (id: string, value: string) => {
   document.getElementById(id)!.textContent = value;
 };
 let host = "",
   tabId: number | undefined,
   url = "",
-  pending = false;
-async function render() {
-  const s = fromStorage(await chrome.storage.local.get(null)),
-    p = siteFor(s, host),
-    ok = supported(url);
-  global.checked = s.enabled;
-  site.checked = p.enabled;
-  force.checked = p.force;
+  pending = false,
+  revision = 0;
+function lock() {
   global.disabled = pending;
-  site.disabled = pending || !ok;
-  force.disabled = pending || !ok;
-  reset.disabled = pending || !ok;
+  modes.disabled = pending || !supported(url);
+}
+async function render() {
+  const current = ++revision;
+  const s = fromStorage(await chrome.storage.local.get(null));
+  if (current !== revision || pending) return;
+  const p = siteFor(s, host),
+    ok = supported(url),
+    mode = !p.enabled ? "original" : p.force ? "forced" : "auto";
+  global.checked = s.enabled;
+  radios.forEach((r) => (r.checked = r.value === mode));
+  lock();
   text("host", host || "This page");
+  text(
+    "global-detail",
+    s.enabled
+      ? "Automatic dark mode is on"
+      : "Paused everywhere · site choices are saved",
+  );
+  text(
+    "saved",
+    ok
+      ? "Saved for this website. Changes apply automatically."
+      : "Site preferences are unavailable on this page.",
+  );
   if (!ok) {
     text("status", "Unavailable on this page");
     text(
       "hint",
       "Chrome protects this page from extensions. Open a regular website to use Afterglow.",
+    );
+    return;
+  }
+  if (!s.enabled) {
+    text("status", "Afterglow is paused");
+    text(
+      "hint",
+      "Turn on Afterglow across the web to apply your saved site choice.",
     );
     return;
   }
@@ -37,50 +61,67 @@ async function render() {
       { type: "status" },
       { frameId: 0 },
     );
-    text("status", result.status);
+    if (current !== revision || pending) return;
+    const labels: Record<string, string> = {
+      "Afterglow active": "Afterglow’s dark theme is active",
+      "Native dark theme": "Keeping this site’s own dark theme",
+      Disabled: "Using the website’s original appearance",
+    };
+    text("status", labels[result.status] ?? result.status);
     text(
       "hint",
       result.status === "Unavailable on this page"
         ? "Refresh this page to try again."
-        : "",
+        : result.status === "Native dark theme"
+          ? "Want Afterglow’s charcoal palette instead? Choose Always dark."
+          : "",
     );
   } catch {
-    text("status", "Unavailable on this page");
+    if (current !== revision || pending) return;
+    text("status", "Refresh this page to connect");
     text(
       "hint",
-      "Refresh this page to activate Afterglow. Chrome’s built-in PDF viewer is unsupported.",
+      "Your choice is saved. Refresh the page to apply it. Chrome’s built-in PDF viewer is unsupported.",
     );
   }
 }
-async function update(scope: string, clear = false) {
+async function update(scope: "global" | "site", mode?: string) {
+  if (pending) return;
+  const enabled = global.checked;
   pending = true;
+  ++revision;
+  lock();
+  text("hint", "Saving…");
   try {
     const result = await chrome.runtime.sendMessage({
       type: "update",
       scope,
       host,
-      enabled: scope === "global" ? global.checked : site.checked,
-      force: force.checked,
-      reset: clear,
+      enabled: scope === "global" ? enabled : mode !== "original",
+      force: mode === "forced",
+      reset: scope === "site" && mode === "auto",
     });
     if (result.error) throw Error(result.error);
+    pending = false;
     await render();
     setTimeout(() => void render(), 450);
   } catch {
-    text("hint", "Could not save this setting. Please try again.");
-  } finally {
     pending = false;
-    global.disabled = false;
-    site.disabled = !supported(url);
-    force.disabled = !supported(url);
-    reset.disabled = !supported(url);
+    await render();
+    text("hint", "Could not save this choice. Please try again.");
+  } finally {
+    lock();
   }
 }
 global.addEventListener("change", () => void update("global"));
-site.addEventListener("change", () => void update("site"));
-force.addEventListener("change", () => void update("site"));
-reset.addEventListener("click", () => void update("site", true));
-chrome.storage.onChanged.addListener(() => void render());
+radios.forEach((r) =>
+  r.addEventListener("change", () => {
+    if (r.checked) void update("site", r.value);
+  }),
+);
+chrome.storage.onChanged.addListener(() => {
+  if (!pending) void render();
+});
 void (async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   tabId = tab?.id;

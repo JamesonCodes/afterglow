@@ -15,31 +15,46 @@
       </div>
     </header>
     <main>
+      <label class="row global"
+        ><span
+          >Afterglow across the web<small id="global-detail"
+            >Automatic dark mode is on</small
+          ></span
+        ><input id="global" type="checkbox" role="switch" disabled
+      /></label>
       <section class="site">
         <span class="eyebrow">CURRENT WEBSITE</span>
         <h2 id="host">Loading…</h2>
-        <p id="status" role="status" aria-live="polite">Checking theme…</p>
+        <p id="status" role="status" aria-live="polite">Checking appearance…</p>
       </section>
-      <label class="row"
-        ><span
-          >Enable Afterglow<small
-            >Automatic dark mode across the web</small
-          ></span
-        ><input id="global" type="checkbox" role="switch" /></label
-      ><label class="row"
-        ><span
-          >Enable on this site<small
-            >Remember this website’s preference</small
-          ></span
-        ><input id="site" type="checkbox" role="switch" /></label
-      ><label class="row"
-        ><span
-          >Force Afterglow<small
-            >Apply even with a native dark theme</small
-          ></span
-        ><input id="force" type="checkbox" role="switch" /></label
-      ><button id="reset">Reset site settings</button>
-      <p id="hint"></p>
+      <fieldset id="modes" disabled aria-describedby="saved">
+        <legend>Appearance for this site</legend>
+        <label class="mode"
+          ><input id="auto" type="radio" name="mode" value="auto" /><span
+            ><strong>Automatic</strong
+            ><small>Darken light pages; keep existing dark themes.</small></span
+          ></label
+        >
+        <label class="mode"
+          ><input id="forced" type="radio" name="mode" value="forced" /><span
+            ><strong>Always dark</strong
+            ><small>Always apply Afterglow’s charcoal theme.</small></span
+          ></label
+        >
+        <label class="mode"
+          ><input
+            id="original"
+            type="radio"
+            name="mode"
+            value="original"
+          /><span
+            ><strong>Original site</strong
+            ><small>Turn Afterglow off for this website.</small></span
+          ></label
+        >
+      </fieldset>
+      <p id="saved">Saved for this website. Changes apply automatically.</p>
+      <p id="hint" role="status" aria-live="polite"></p>
     </main>
     <footer>Charcoal nights. Original colors.</footer>
     <script src="popup.js"></script>

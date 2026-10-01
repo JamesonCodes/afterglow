@@ -2,7 +2,7 @@
 
 A Chrome extension that gives websites a beautiful, comfortable charcoal theme.
 
-Afterglow automatically themes light websites, keeps existing dark designs, and preserves photos, video, canvas, and background-image colors. Its dark popup includes a global switch, a site switch, a force-theme option, and a reset button. Preferences stay on your computer and apply across tabs, page paths, and browser restarts. Subdomains have independent settings.
+Afterglow automatically themes light websites, keeps existing dark designs, and preserves photos, video, canvas, and background-image colors. Its dark popup includes a global switch and one appearance choice per site: Automatic, Always dark, or Original site. Preferences stay on your computer and apply across tabs, page paths, and browser restarts. Subdomains have independent settings.
 
 ## Install locally
 
@@ -14,7 +14,7 @@ The built extension is in `dist`.
 4. Pin Afterglow from Chrome's Extensions menu.
 5. Refresh any websites already open when you installed it.
 
-Open the toolbar popup to change the current website's settings. **Force Afterglow** overrides native-dark detection. **Reset site settings** returns that website to enabled, automatic detection. Turning the global switch off preserves every site's preferences.
+Open the toolbar popup and choose **Automatic** to darken light pages while keeping existing dark themes, **Always dark** to apply Afterglow even on already-dark pages, or **Original site** to turn Afterglow off for that website. Choices save and apply automatically; there is no separate save or reset step. Turning **Afterglow across the web** off pauses the extension everywhere and preserves every site's choice. Existing saved preferences carry over automatically.
 
 ## Build and verify
 
@@ -37,7 +37,7 @@ HTTP/HTTPS website access lets Afterglow automatically style pages and their eli
 
 ## Compatibility
 
-Chrome internal pages, the Chrome Web Store, and the built-in PDF viewer are unavailable. Native-dark detection is heuristic; use Force Afterglow if it skips a light site or turn the site switch off when you prefer its original design. Complex charts, closed shadow roots, protected embeds, inaccessible stylesheets, and sites with unusual styling may need individual adjustments. Theme-engine page-script proxies are omitted for Manifest V3 compatibility, so some changes made directly through JavaScript stylesheet APIs may not be observed. Background images are deliberately left unchanged; images containing white backgrounds may remain bright. Avoid running a second dark-mode extension on the same page.
+Chrome internal pages, the Chrome Web Store, and the built-in PDF viewer are unavailable. Native-dark detection is heuristic; choose Always dark if it skips a light site or choose Original site when you prefer its original design. Complex charts, closed shadow roots, protected embeds, inaccessible stylesheets, and sites with unusual styling may need individual adjustments. Theme-engine page-script proxies are omitted for Manifest V3 compatibility, so some changes made directly through JavaScript stylesheet APIs may not be observed. Background images are deliberately left unchanged; images containing white backgrounds may remain bright. Avoid running a second dark-mode extension on the same page.
 
 ## Credits
 
