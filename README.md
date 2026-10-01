@@ -12,7 +12,7 @@ The built extension is in `dist`.
 2. Enable **Developer mode**.
 3. Click **Load unpacked** and select `/Users/Jameson_C/Desktop/afterglow/dist`.
 4. Pin Afterglow from Chrome's Extensions menu.
-5. Refresh any websites already open when you installed it.
+5. Existing websites connect automatically. Protected Chrome pages remain unavailable.
 
 Open the toolbar popup and choose **Automatic** to darken light pages while keeping existing dark themes, **Always dark** to apply Afterglow even on already-dark pages, or **Original site** to turn Afterglow off for that website. Choices save and apply automatically; there is no separate save or reset step. Turning **Afterglow across the web** off pauses the extension everywhere and preserves every site's choice. Existing saved preferences carry over automatically.
 
@@ -29,11 +29,11 @@ npx playwright install chromium
 npm run test:browser
 ```
 
-Reload the extension on `chrome://extensions` after rebuilding, then refresh open pages. The browser test uses a disposable Chromium profile, leaving your everyday Chrome profile alone. It exercises actual extension messaging, popup controls, native detection, dynamically added content, theme switching, forms, media, cross-tab changes, and browser-restart persistence.
+Reload the extension on `chrome://extensions` after rebuilding. Afterglow reconnects to open websites automatically without reloading them or clearing drafts. The browser test uses a disposable Chromium profile, leaving your everyday Chrome profile alone. It exercises actual extension messaging, popup controls, native detection, dynamically added content, theme switching, forms, media, cross-tab changes, and browser-restart persistence, and automatic recovery of ten open tabs after extension reloads, preserved form drafts, and duplicate-injection safety.
 
 ## Permissions and privacy
 
-HTTP/HTTPS website access lets Afterglow automatically style pages and their eligible embedded frames. `storage` saves preferences locally. The background worker fetches website stylesheets when browser cross-origin rules prevent the theme engine from reading them. No accounts, analytics, cloud settings, remotely loaded executable code, or Afterglow service are used.
+HTTP/HTTPS website access lets Afterglow automatically style pages and their eligible embedded frames. `storage` saves preferences locally. `scripting` reconnects to existing tabs after installation or extension reloads. The background worker fetches website stylesheets when browser cross-origin rules prevent the theme engine from reading them. No accounts, analytics, cloud settings, remotely loaded executable code, or Afterglow service are used.
 
 ## Compatibility
 
@@ -41,4 +41,4 @@ Chrome internal pages, the Chrome Web Store, and the built-in PDF viewer are una
 
 ## Credits
 
-Uses the locally bundled **Dark Reader 4.9.133** dynamic theme API, Copyright Dark Reader Ltd., distributed under the MIT license. See `THIRD_PARTY_LICENSES.txt` and the copy shipped in `dist`. The build omits Dark Reader's inline page-proxy injection to comply with Chrome extension Content Security Policy; it does not modify the installed dependency. All theme code is bundled locally.
+Uses the locally bundled **Dark Reader 4.9.133** dynamic theme API, Copyright Dark Reader Ltd., distributed under the MIT license. See `THIRD_PARTY_LICENSES.txt` and the copy shipped in `dist`. The build omits Dark Reader's inline page-proxy injection to comply with Chrome extension Content Security Policy; it also guards stale runtime messages after extension reloads. It does not modify the installed dependency. All theme code is bundled locally.

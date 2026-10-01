@@ -22,16 +22,25 @@ try {
     channel: "chromium",
     headless: true,
     args: [
+      "--enable-unsafe-extension-debugging",
       `--disable-extensions-except=${resolve("dist")}`,
       `--load-extension=${resolve("dist")}`,
     ],
   });
-  const worker =
+  let worker =
     context.serviceWorkers()[0] ??
     (await context.waitForEvent("serviceworker"));
   const id = new URL(worker.url()).host;
   const page = await context.newPage();
   const errors = [];
+  const invalidationErrors = [];
+  page.on("console", (m) => {
+    if (
+      m.type() === "error" &&
+      m.text().includes("Extension context invalidated")
+    )
+      invalidationErrors.push(m.text());
+  });
   page.on("console", (m) => {
     if (m.type() === "error") console.log(m.text());
   });
@@ -150,10 +159,16 @@ try {
   assert.match(await popup.locator("#hint").textContent(), /Always dark/);
   await page.goto(`${base}/light`);
   await expectStatus("Afterglow active");
-  await page.evaluate(() => document.body.classList.add("dark"));
+  await page.evaluate(() => {
+    window.afterglowActivity = setInterval(() => {
+      document.querySelector("p").textContent = String(Date.now());
+    }, 25);
+    document.body.classList.add("dark");
+  });
   await expectStatus("Native dark theme");
   await page.evaluate(() => document.body.classList.remove("dark"));
   await expectStatus("Afterglow active");
+  await page.evaluate(() => clearInterval(window.afterglowActivity));
   await popup.reload();
   await popup.locator("body").screenshot({ path: "popup-preview.png" });
   await page.screenshot({ path: "theme-preview.png" });
@@ -194,6 +209,121 @@ try {
       "site:persist.test": { enabled: false, force: true },
     }),
   );
+  const recoveryTabs = [];
+  await worker.evaluate(() =>
+    chrome.storage.local.set({
+      "site:127.0.0.1": { enabled: false, force: false },
+    }),
+  );
+  for (let i = 0; i < 10; i++) {
+    const p = await context.newPage();
+    const target =
+      i % 3 === 2
+        ? base.replace("localhost", "127.0.0.1") + "/light"
+        : base + (i % 3 === 1 ? "/dark" : "/light");
+    await p.goto(target);
+    await p.locator("input").fill(`Unsaved draft ${i}`);
+    let navigations = 0;
+    p.on("framenavigated", (f) => {
+      if (f === p.mainFrame()) navigations++;
+    });
+    const tabId = await worker.evaluate(
+      async (url) =>
+        (await chrome.tabs.query({})).find((t) => t.url === url && t.active)
+          ?.id ??
+        (await chrome.tabs.query({})).filter((t) => t.url === url).at(-1)?.id,
+      target,
+    );
+    recoveryTabs.push({
+      page: p,
+      tabId,
+      expected:
+        i % 3 === 2
+          ? "Disabled"
+          : i % 3 === 1
+            ? "Native dark theme"
+            : "Afterglow active",
+      value: `Unsaved draft ${i}`,
+      navigations: () => navigations,
+    });
+  }
+  await page.evaluate(() => {
+    window.afterglowDocumentIdentity = "unchanged";
+  });
+  // Reload the extension while the document and old content script stay alive.
+  try {
+    await worker.evaluate(() => chrome.runtime.reload());
+  } catch (error) {
+    if (!/closed|destroyed/i.test(String(error))) throw error;
+  }
+  await page.waitForTimeout(300);
+  // Flag-loaded unpacked extensions are unloaded by runtime.reload in Chromium.
+  // Re-register the same bundle to complete the reload in this disposable profile.
+  const replacement = context.waitForEvent("serviceworker", {
+    predicate: (w) => w !== worker,
+    timeout: 15000,
+  });
+  replacement.catch(() => {});
+  const session = await context.browser().newBrowserCDPSession();
+  await session.send("Extensions.loadUnpacked", { path: resolve("dist") });
+  const reloadedPopup = await context.newPage();
+  await reloadedPopup.goto(`chrome-extension://${id}/popup.html`);
+  await reloadedPopup.evaluate(() =>
+    chrome.runtime.sendMessage({ type: "context" }),
+  );
+  worker = await replacement;
+  await expectStatus("Afterglow active");
+  assert.equal(
+    await page.evaluate(() => window.afterglowDocumentIdentity),
+    "unchanged",
+  );
+  for (const item of recoveryTabs) {
+    for (let i = 0; i < 40; i++) {
+      try {
+        if (
+          (
+            await worker.evaluate(
+              (id) =>
+                chrome.tabs.sendMessage(id, { type: "status" }, { frameId: 0 }),
+              item.tabId,
+            )
+          ).status === item.expected
+        )
+          break;
+      } catch {}
+      await page.waitForTimeout(100);
+    }
+    assert.equal(
+      (
+        await worker.evaluate(
+          (id) =>
+            chrome.tabs.sendMessage(id, { type: "status" }, { frameId: 0 }),
+          item.tabId,
+        )
+      ).status,
+      item.expected,
+    );
+    assert.equal(await item.page.locator("input").inputValue(), item.value);
+    assert.equal(item.navigations(), 0);
+  }
+  // Repeated recovery requests must not duplicate content scripts or styles.
+  const count = await page.locator("style.darkreader").count();
+  for (let i = 0; i < 3; i++)
+    await worker.evaluate(
+      (id) =>
+        chrome.scripting.executeScript({
+          target: { tabId: id, allFrames: true },
+          files: ["content.js"],
+        }),
+      tab,
+    );
+  await page.waitForTimeout(500);
+  assert.equal(await page.locator("style.darkreader").count(), count);
+  assert.deepEqual(invalidationErrors, []);
+  assert.deepEqual(errors, []);
+  console.log(
+    "PASS: 10 open tabs reconnect automatically, keep drafts and never navigate; duplicate injection is safe",
+  );
   await context.close();
   context = undefined;
   // Reopen the profile to confirm preferences persist across browser restarts.
@@ -201,10 +331,17 @@ try {
     channel: "chromium",
     headless: true,
     args: [
+      "--enable-unsafe-extension-debugging",
       `--disable-extensions-except=${resolve("dist")}`,
       `--load-extension=${resolve("dist")}`,
     ],
   });
+  const restartSession = await context.browser().newBrowserCDPSession();
+  await restartSession.send("Extensions.loadUnpacked", {
+    path: resolve("dist"),
+  });
+  const restartedPage = await context.newPage();
+  await restartedPage.goto(`${base}/light`);
   const w =
     context.serviceWorkers()[0] ??
     (await context.waitForEvent("serviceworker"));

@@ -1,9 +1,45 @@
 import { enable, disable, setFetchMethod } from "darkreader";
 import { effective, siteFor, type Settings } from "./settings";
 import { nativeDark } from "./detection";
+let stopped = false;
+const colorScheme = matchMedia("(prefers-color-scheme: dark)");
+function contextAlive(): boolean {
+  try {
+    return !stopped && !!chrome.runtime.id;
+  } catch {
+    return false;
+  }
+}
+function invalidated(error: unknown): boolean {
+  return (
+    !contextAlive() || /Extension context invalidated/i.test(String(error))
+  );
+}
+function stop() {
+  if (stopped) return;
+  stopped = true;
+  clearTimeout(timer);
+  observer.disconnect();
+  document.removeEventListener("DOMContentLoaded", schedule);
+  document.removeEventListener("load", schedule, true);
+  colorScheme.removeEventListener("change", schedule);
+  document.removeEventListener("afterglow:dispose", stop);
+  try {
+    chrome.storage.onChanged.removeListener(storageChanged);
+  } catch {}
+  try {
+    disable();
+  } catch {}
+  active = false;
+  status = "Unavailable on this page";
+}
 // The Dark Reader API wraps sendMessage without forwarding its Promise result.
 // Use Chrome's callback interface for reliable communication.
 function send(message: unknown): Promise<any> {
+  if (!contextAlive()) {
+    stop();
+    return Promise.reject(Error("Extension context invalidated"));
+  }
   return new Promise((resolve, reject) =>
     chrome.runtime.sendMessage(message, (value) => {
       if (chrome.runtime.lastError)
@@ -14,15 +50,29 @@ function send(message: unknown): Promise<any> {
   );
 }
 setFetchMethod(async (url) => {
-  const result = await send({ type: "fetch-css", url: String(url) });
-  return new Response(result.text, { headers: { "Content-Type": "text/css" } });
+  if (!contextAlive()) {
+    stop();
+    return new Response("");
+  }
+  try {
+    const result = await send({ type: "fetch-css", url: String(url) });
+    return new Response(result.text, {
+      headers: { "Content-Type": "text/css" },
+    });
+  } catch (error) {
+    if (invalidated(error)) {
+      stop();
+      return new Response("");
+    }
+    throw error;
+  }
 });
 let settings: Settings,
   host = "",
   available = false,
   active = false,
   status = "Disabled",
-  timer: ReturnType<typeof setTimeout>,
+  timer: ReturnType<typeof setTimeout> | undefined,
   busy = false;
 const observer = new MutationObserver((records) => {
   if (
@@ -43,6 +93,7 @@ const observer = new MutationObserver((records) => {
     schedule();
 });
 function observe() {
+  if (stopped) return;
   observer.observe(document, {
     subtree: true,
     childList: true,
@@ -58,6 +109,10 @@ function observe() {
   });
 }
 function apply() {
+  if (!contextAlive()) {
+    stop();
+    return;
+  }
   if (busy || !settings) return;
   busy = true;
   observer.disconnect();
@@ -94,8 +149,14 @@ function apply() {
       status = "Afterglow active";
     }
   } catch (error) {
+    if (invalidated(error)) {
+      stop();
+      return;
+    }
     console.error("Afterglow theme failed", error);
-    if (active) disable();
+    try {
+      disable();
+    } catch {}
     active = false;
     status = "Unavailable on this page";
   } finally {
@@ -104,32 +165,66 @@ function apply() {
   }
 }
 function schedule() {
-  clearTimeout(timer);
-  timer = setTimeout(apply, 250);
+  if (!contextAlive()) {
+    stop();
+    return;
+  }
+  // Keep a bounded wait: continuously changing pages must not postpone work forever.
+  if (timer !== undefined) return;
+  timer = setTimeout(() => {
+    timer = undefined;
+    apply();
+  }, 250);
 }
 async function refresh() {
+  if (!contextAlive()) {
+    stop();
+    return;
+  }
   try {
     const c = await send({ type: "context" });
+    if (!contextAlive()) {
+      stop();
+      return;
+    }
     if (c.error) throw Error(c.error);
     settings = c.settings;
     host = c.host;
     available = c.supported;
-    schedule();
-  } catch {
+    clearTimeout(timer);
+    timer = undefined;
+    apply();
+  } catch (error) {
+    if (invalidated(error)) {
+      stop();
+      return;
+    }
     status = "Unavailable on this page";
   }
 }
-chrome.storage.onChanged.addListener((_changes, area) => {
+function storageChanged(
+  _changes: Record<string, chrome.storage.StorageChange>,
+  area: string,
+) {
   if (area === "local") void refresh();
-});
+}
+chrome.storage.onChanged.addListener(storageChanged);
 chrome.runtime.onMessage.addListener((m, _s, reply) => {
+  if (!contextAlive()) {
+    stop();
+    return false;
+  }
   if (m.type === "status") {
-    reply({ status, host });
+    reply({ status, host, version: chrome.runtime.getManifest().version });
   }
   return false;
 });
 document.addEventListener("DOMContentLoaded", schedule, { once: true });
 document.addEventListener("load", schedule, true);
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change", schedule);
+colorScheme.addEventListener("change", schedule);
+document.addEventListener("afterglow:dispose", stop);
+(
+  globalThis as typeof globalThis & { __afterglowSession?: unknown }
+).__afterglowSession = { isAlive: contextAlive, dispose: stop };
 observe();
 void refresh();

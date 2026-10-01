@@ -16,6 +16,24 @@ function lock() {
   global.disabled = pending;
   modes.disabled = pending || !supported(url);
 }
+async function readStatus() {
+  try {
+    return await chrome.tabs.sendMessage(
+      tabId!,
+      { type: "status" },
+      { frameId: 0 },
+    );
+  } catch {
+    const result = await chrome.runtime.sendMessage({ type: "recover", tabId });
+    if (result?.error) throw Error(result.error);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    return await chrome.tabs.sendMessage(
+      tabId!,
+      { type: "status" },
+      { frameId: 0 },
+    );
+  }
+}
 async function render() {
   const current = ++revision;
   const s = fromStorage(await chrome.storage.local.get(null));
@@ -56,11 +74,7 @@ async function render() {
     return;
   }
   try {
-    const result = await chrome.tabs.sendMessage(
-      tabId!,
-      { type: "status" },
-      { frameId: 0 },
-    );
+    const result = await readStatus();
     if (current !== revision || pending) return;
     const labels: Record<string, string> = {
       "Afterglow active": "Afterglow’s dark theme is active",
@@ -71,17 +85,17 @@ async function render() {
     text(
       "hint",
       result.status === "Unavailable on this page"
-        ? "Refresh this page to try again."
+        ? "Afterglow couldn’t apply the theme here. Try Original site, then Automatic."
         : result.status === "Native dark theme"
           ? "Want Afterglow’s charcoal palette instead? Choose Always dark."
           : "",
     );
   } catch {
     if (current !== revision || pending) return;
-    text("status", "Refresh this page to connect");
+    text("status", "This page is unavailable");
     text(
       "hint",
-      "Your choice is saved. Refresh the page to apply it. Chrome’s built-in PDF viewer is unsupported.",
+      "Your choice is saved. Afterglow will retry when you return to this tab. Chrome’s built-in PDF viewer is unsupported.",
     );
   }
 }
