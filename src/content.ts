@@ -1,6 +1,6 @@
 import { Accents } from "./accents";
 import { enable, disable, setFetchMethod } from "darkreader";
-import { effective, siteFor, type Settings } from "./settings";
+import { effective, type Settings } from "./settings";
 import { nativeDark } from "./detection";
 const accents = new Accents();
 let stopped = false;
@@ -149,7 +149,7 @@ function apply() {
         },
       );
       active = true;
-      accents.setActive(siteFor(settings, host).accents);
+      accents.setActive(settings.accents);
       status = "Afterglow active";
     }
   } catch (error) {

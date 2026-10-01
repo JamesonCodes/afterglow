@@ -2,7 +2,7 @@
 
 A Chrome extension that gives websites a beautiful, comfortable charcoal theme.
 
-Afterglow automatically themes light websites, keeps existing dark designs, and preserves photos, video, canvas, and background-image colors. Its dark popup includes a global switch and one appearance choice per site: Automatic or Original site. An optional per-site Afterglow accents switch adds a subtle lavender glow to keyboard-focused controls and hovered buttons. Preferences stay on your computer and apply across tabs, page paths, and browser restarts. Subdomains have independent settings.
+Afterglow automatically themes light websites, keeps existing dark designs, and preserves photos, video, canvas, and background-image colors. Its dark popup includes a global switch and one appearance choice per site: Automatic or Original site. An optional global Afterglow accents switch adds a subtle lavender glow to keyboard-focused controls and hovered buttons. Preferences stay on your computer and apply across tabs, page paths, and browser restarts. Subdomains have independent settings.
 
 ## Install locally
 
@@ -16,7 +16,7 @@ The built extension is in `dist`.
 
 Open the toolbar popup and choose **Automatic** to darken light pages while keeping existing dark themes, or **Original site** to turn Afterglow off for that website. Choices save and apply automatically; there is no separate save or reset step. Turning **Afterglow across the web** off pauses the extension everywhere and preserves every site's choice. Existing saved Always dark choices now use Automatic; disabled site choices stay disabled.
 
-**Afterglow accents** is off by default. Turn it on for a soft 1px lavender halo and 8px glow on enabled hovered buttons and keyboard-focused links and form controls. Existing shadows, focus outlines, colors, and layout are preserved. Accents appear only with Afterglow’s generated dark theme, never on native dark sites. The preference stays saved while paused or in Original site mode and follows the top-level site inside eligible frames. Shadow-root controls are not covered in this version.
+**Afterglow accents** is off by default. Turn it on once to apply across all Afterglow-themed websites: a soft 1px lavender halo and 8px glow on enabled hovered buttons and keyboard-focused links and form controls. Existing shadows, focus outlines, colors, and layout are preserved. Accents appear only with Afterglow’s generated dark theme, never on native dark sites. The global preference stays saved while paused or in Original site mode. Eligible frames also use it. Existing per-site opt-ins migrate to globally enabled accents; a global off choice overrides legacy site values. Shadow-root controls are not covered in this version.
 
 ## Build and verify
 

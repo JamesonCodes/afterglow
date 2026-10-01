@@ -11,7 +11,7 @@ import {
 test("defaults and global precedence retain site overrides", () => {
   const s = defaults();
   assert.equal(effective(s, "a.test"), true);
-  s.sites["a.test"] = { enabled: true, force: true, accents: false };
+  s.sites["a.test"] = { enabled: true, force: true };
   s.enabled = false;
   assert.equal(effective(s, "a.test"), false);
   assert.equal(siteFor(s, "a.test").force, true);
@@ -25,7 +25,6 @@ test("hostname isolation and reset", () => {
   assert.deepEqual(siteFor(s, "a.test"), {
     enabled: true,
     force: false,
-    accents: false,
   });
   assert.equal(hostname("https://a.test/path"), "a.test");
 });
@@ -34,7 +33,7 @@ test("legacy forced preferences become automatic without changing enabled state"
     JSON.parse(
       JSON.stringify({
         enabled: false,
-        "site:a.test": { enabled: true, force: true, accents: false },
+        "site:a.test": { enabled: true, force: true },
       }),
     ),
   );
@@ -42,7 +41,6 @@ test("legacy forced preferences become automatic without changing enabled state"
   assert.deepEqual(s.sites["a.test"], {
     enabled: true,
     force: false,
-    accents: false,
   });
 });
 test("protected and malformed URLs", () => {
@@ -56,10 +54,12 @@ test("protected and malformed URLs", () => {
   assert.equal(supported("https://example.com"), true);
 });
 
-test("accents default off and retain independent hostname preferences", () => {
-  const s = fromStorage({ "site:a.test": { enabled: false, accents: true } });
-  assert.equal(siteFor(s, "a.test").accents, true);
+test("global accents migrate legacy opt-ins and honor explicit global choices", () => {
+  const raw = { "site:a.test": { enabled: false, accents: true } };
+  const s = fromStorage(raw);
+  assert.equal(s.accents, true);
   assert.equal(siteFor(s, "a.test").enabled, false);
-  assert.equal(siteFor(s, "sub.a.test").accents, false);
-  assert.equal(siteFor(defaults(), "a.test").accents, false);
+  assert.equal(fromStorage({ ...raw, accents: false }).accents, false);
+  assert.equal(fromStorage({ accents: true }).accents, true);
+  assert.equal(defaults().accents, false);
 });

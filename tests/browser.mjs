@@ -143,6 +143,16 @@ try {
   await page.waitForTimeout(500);
   await popup.locator("#accents").check();
   await page.waitForTimeout(350);
+  const otherHost = await context.newPage();
+  await otherHost.goto(base.replace("localhost", "127.0.0.1") + "/light");
+  await otherHost.waitForTimeout(350);
+  await otherHost.locator(".card button").hover();
+  assert.ok(
+    await otherHost
+      .locator(".card button")
+      .getAttribute("data-afterglow-accent"),
+  );
+
   await page.mouse.move(0, 0);
   const original = await button.evaluate((e) => ({
     shadow: getComputedStyle(e).boxShadow,
@@ -204,6 +214,8 @@ try {
   );
   await popup.locator("#accents").uncheck();
   await page.waitForTimeout(350);
+  assert.equal(await otherHost.locator(".afterglow-accents").count(), 0);
+  await otherHost.close();
   assert.equal(await page.locator("[data-afterglow-accent]").count(), 0);
   assert.equal(await page.locator(".afterglow-accents").count(), 0);
   await popup.locator("#accents").check();
@@ -481,7 +493,11 @@ try {
     ],
     { enabled: false, force: true, accents: true },
   );
-  console.log("PASS: browser restart persistence");
+  assert.equal(
+    (await w.evaluate(() => chrome.storage.local.get(null))).accents,
+    true,
+  );
+  console.log("PASS: browser restart persistence and global accents");
 } finally {
   await context?.close();
   server.close();

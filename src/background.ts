@@ -1,5 +1,8 @@
 import { fromStorage, hostname, supported, keyFor, siteFor } from "./settings";
-let writes = Promise.resolve();
+let writes = chrome.storage.local.get(null).then(async (raw) => {
+  if (typeof raw.accents !== "boolean")
+    await chrome.storage.local.set({ accents: fromStorage(raw).accents });
+});
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   const run = async () => {
     if (message.type === "fetch-css" && sender.tab) {
@@ -37,6 +40,10 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
             await chrome.storage.local.set({
               enabled: message.enabled === true,
             });
+          else if (message.scope === "accents")
+            await chrome.storage.local.set({
+              accents: message.accents === true,
+            });
           else if (
             typeof message.host === "string" &&
             message.host &&
@@ -46,14 +53,11 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
               fromStorage(await chrome.storage.local.get(null)),
               message.host,
             );
-            const updated =
-              message.scope === "accents"
-                ? { ...current, accents: message.accents === true }
-                : {
-                    ...current,
-                    enabled: message.reset ? true : message.enabled === true,
-                    force: false,
-                  };
+            const updated = {
+              ...current,
+              enabled: message.reset ? true : message.enabled === true,
+              force: false,
+            };
             await chrome.storage.local.set({ [keyFor(message.host)]: updated });
           }
         });

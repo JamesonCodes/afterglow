@@ -16,7 +16,7 @@ let host = "",
 function lock() {
   global.disabled = pending;
   modes.disabled = pending || !supported(url);
-  accents.disabled = pending || !supported(url);
+  accents.disabled = pending;
 }
 async function readStatus() {
   try {
@@ -44,16 +44,12 @@ async function render() {
     ok = supported(url),
     mode = !p.enabled ? "original" : "auto";
   global.checked = s.enabled;
-  accents.checked = p.accents;
+  accents.checked = s.accents;
   text(
     "accents-detail",
-    !ok
-      ? "Unavailable on this page."
-      : !s.enabled
-        ? "Saved while paused. Only with Afterglow’s dark theme."
-        : !p.enabled
-          ? "Saved for Automatic mode. Only with Afterglow’s dark theme."
-          : "Only with Afterglow’s dark theme; native dark sites stay unchanged.",
+    !s.enabled
+      ? "Saved while paused. Applies across Afterglow-themed websites."
+      : "Applies across Afterglow-themed websites; native dark sites stay unchanged.",
   );
   radios.forEach((r) => (r.checked = r.value === mode));
   lock();
