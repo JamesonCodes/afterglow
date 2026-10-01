@@ -25,7 +25,7 @@ test("hostname isolation and reset", () => {
   assert.deepEqual(siteFor(s, "a.test"), { enabled: true, force: false });
   assert.equal(hostname("https://a.test/path"), "a.test");
 });
-test("stored settings survive serialization", () => {
+test("legacy forced preferences become automatic without changing enabled state", () => {
   const s = fromStorage(
     JSON.parse(
       JSON.stringify({
@@ -35,7 +35,7 @@ test("stored settings survive serialization", () => {
     ),
   );
   assert.equal(s.enabled, false);
-  assert.deepEqual(s.sites["a.test"], { enabled: true, force: true });
+  assert.deepEqual(s.sites["a.test"], { enabled: true, force: false });
 });
 test("protected and malformed URLs", () => {
   for (const u of [

@@ -1,5 +1,5 @@
 import { enable, disable, setFetchMethod } from "darkreader";
-import { effective, siteFor, type Settings } from "./settings";
+import { effective, type Settings } from "./settings";
 import { nativeDark } from "./detection";
 let stopped = false;
 const colorScheme = matchMedia("(prefers-color-scheme: dark)");
@@ -125,8 +125,7 @@ function apply() {
     const native = nativeDark();
     if (!available) status = "Unavailable on this page";
     else if (!effective(settings, host)) status = "Disabled";
-    else if (native && !siteFor(settings, host).force)
-      status = "Native dark theme";
+    else if (native) status = "Native dark theme";
     else {
       enable(
         {

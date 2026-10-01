@@ -40,7 +40,7 @@ async function render() {
   if (current !== revision || pending) return;
   const p = siteFor(s, host),
     ok = supported(url),
-    mode = !p.enabled ? "original" : p.force ? "forced" : "auto";
+    mode = !p.enabled ? "original" : "auto";
   global.checked = s.enabled;
   radios.forEach((r) => (r.checked = r.value === mode));
   lock();
@@ -86,9 +86,7 @@ async function render() {
       "hint",
       result.status === "Unavailable on this page"
         ? "Afterglow couldn’t apply the theme here. Try Original site, then Automatic."
-        : result.status === "Native dark theme"
-          ? "Want Afterglow’s charcoal palette instead? Choose Always dark."
-          : "",
+        : "",
     );
   } catch {
     if (current !== revision || pending) return;
@@ -112,7 +110,7 @@ async function update(scope: "global" | "site", mode?: string) {
       scope,
       host,
       enabled: scope === "global" ? enabled : mode !== "original",
-      force: mode === "forced",
+      force: false,
       reset: scope === "site" && mode === "auto",
     });
     if (result.error) throw Error(result.error);

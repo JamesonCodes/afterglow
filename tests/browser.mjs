@@ -139,24 +139,26 @@ try {
   await page.goto(`${base}/dark`);
   await expectStatus("Native dark theme");
   await popup.reload();
-  await popup.locator("#forced").check();
-  await expectStatus("Afterglow active");
+  assert.equal(await popup.locator('input[name="mode"]').count(), 2);
+  // Saved Always dark choices from earlier versions use Automatic.
+  await worker.evaluate(() =>
+    chrome.storage.local.set({
+      "site:localhost": { enabled: true, force: true },
+    }),
+  );
+  await expectStatus("Native dark theme");
+  await popup.waitForTimeout(300);
+  assert.equal(await popup.locator("#auto").isChecked(), true);
+  assert.equal(await popup.locator("#hint").textContent(), "");
   await popup.locator("#global").uncheck();
   await expectStatus("Disabled");
-  assert.equal(await popup.locator("#forced").isChecked(), true);
+  assert.equal(await popup.locator("#auto").isChecked(), true);
   assert.equal(
     await popup.locator("#status").textContent(),
     "Afterglow is paused",
   );
-  const saved = await worker.evaluate(() => chrome.storage.local.get(null));
-  assert.equal(saved["site:localhost"].force, true);
   await popup.locator("#global").check();
-  await expectStatus("Afterglow active");
-  await popup.locator("#auto").check();
   await expectStatus("Native dark theme");
-  await popup.waitForTimeout(600);
-  assert.equal(await popup.locator("#auto").isChecked(), true);
-  assert.match(await popup.locator("#hint").textContent(), /Always dark/);
   await page.goto(`${base}/light`);
   await expectStatus("Afterglow active");
   await page.evaluate(() => {

@@ -32,7 +32,8 @@ export function fromStorage(raw: Record<string, unknown>): Settings {
       const v = value as Partial<Site>;
       s.sites[key.slice(5)] = {
         enabled: v.enabled !== false,
-        force: v.force === true,
+        // Legacy Always dark selections now behave as Automatic.
+        force: false,
       };
     }
   return s;

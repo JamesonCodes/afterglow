@@ -48,7 +48,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
               await chrome.storage.local.set({
                 [keyFor(message.host)]: {
                   enabled: message.enabled === true,
-                  force: message.force === true,
+                  force: false,
                 },
               });
           }
