@@ -1,0 +1,23 @@
+{
+  "name": "afterglow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:browser": "npm run build && node tests/browser.mjs"
+  },
+  "dependencies": {
+    "darkreader": "4.9.133"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.0",
+    "@types/chrome": "0.1.24",
+    "esbuild": "0.25.10",
+    "prettier": "3.6.2",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  }
+}

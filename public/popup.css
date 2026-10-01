@@ -1,0 +1,142 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #181a1f;
+  color: #e6e8ed;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  width: 350px;
+  margin: 0;
+  padding: 24px;
+}
+header {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.mark {
+  font-size: 38px;
+  color: #b9aef5;
+}
+h1 {
+  font-size: 22px;
+  margin: 0;
+  letter-spacing: -0.6px;
+}
+header p {
+  margin: 4px 0;
+  color: #a8adb9;
+  font-size: 12px;
+}
+.site {
+  margin: 24px 0 10px;
+  padding: 18px;
+  background: #22252d;
+  border: 1px solid #343844;
+  border-radius: 14px;
+}
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  color: #a8adb9;
+}
+h2 {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+  margin: 8px 0;
+}
+#status {
+  color: #c4bbf7;
+  font-size: 12px;
+  margin: 0;
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0;
+  border-bottom: 1px solid #30343e;
+  font-size: 13px;
+}
+.row small {
+  display: block;
+  color: #a8adb9;
+  font-size: 11px;
+  margin-top: 5px;
+}
+input {
+  appearance: none;
+  flex-shrink: 0;
+  width: 36px;
+  height: 21px;
+  background: #545b6b;
+  border-radius: 20px;
+  position: relative;
+  cursor: pointer;
+}
+input:before {
+  content: "";
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #e6e8ed;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.15s;
+}
+input:checked {
+  background: #b9aef5;
+}
+input:checked:before {
+  transform: translateX(15px);
+  background: #181a1f;
+}
+input:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+:focus-visible {
+  outline: 2px solid #b9aef5;
+  outline-offset: 4px;
+}
+button {
+  width: 100%;
+  margin-top: 18px;
+  padding: 11px;
+  border: 1px solid #444959;
+  border-radius: 9px;
+  background: transparent;
+  color: #e6e8ed;
+  cursor: pointer;
+}
+button:hover {
+  background: #292d36;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+#hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #b5bac6;
+}
+#hint:empty {
+  display: none;
+}
+footer {
+  margin-top: 18px;
+  text-align: center;
+  color: #a8adb9;
+  font-size: 10px;
+}
+@media (prefers-reduced-motion: reduce) {
+  input:before {
+    transition: none;
+  }
+}
