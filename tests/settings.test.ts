@@ -11,7 +11,7 @@ import {
 test("defaults and global precedence retain site overrides", () => {
   const s = defaults();
   assert.equal(effective(s, "a.test"), true);
-  s.sites["a.test"] = { enabled: true, force: true };
+  s.sites["a.test"] = { enabled: true, force: true, accents: false };
   s.enabled = false;
   assert.equal(effective(s, "a.test"), false);
   assert.equal(siteFor(s, "a.test").force, true);
@@ -22,7 +22,11 @@ test("hostname isolation and reset", () => {
   assert.equal(effective(s, "a.test"), false);
   assert.equal(effective(s, "sub.a.test"), true);
   delete s.sites["a.test"];
-  assert.deepEqual(siteFor(s, "a.test"), { enabled: true, force: false });
+  assert.deepEqual(siteFor(s, "a.test"), {
+    enabled: true,
+    force: false,
+    accents: false,
+  });
   assert.equal(hostname("https://a.test/path"), "a.test");
 });
 test("legacy forced preferences become automatic without changing enabled state", () => {
@@ -30,12 +34,16 @@ test("legacy forced preferences become automatic without changing enabled state"
     JSON.parse(
       JSON.stringify({
         enabled: false,
-        "site:a.test": { enabled: true, force: true },
+        "site:a.test": { enabled: true, force: true, accents: false },
       }),
     ),
   );
   assert.equal(s.enabled, false);
-  assert.deepEqual(s.sites["a.test"], { enabled: true, force: false });
+  assert.deepEqual(s.sites["a.test"], {
+    enabled: true,
+    force: false,
+    accents: false,
+  });
 });
 test("protected and malformed URLs", () => {
   for (const u of [
@@ -46,4 +54,12 @@ test("protected and malformed URLs", () => {
   ])
     assert.equal(supported(u), false);
   assert.equal(supported("https://example.com"), true);
+});
+
+test("accents default off and retain independent hostname preferences", () => {
+  const s = fromStorage({ "site:a.test": { enabled: false, accents: true } });
+  assert.equal(siteFor(s, "a.test").accents, true);
+  assert.equal(siteFor(s, "a.test").enabled, false);
+  assert.equal(siteFor(s, "sub.a.test").accents, false);
+  assert.equal(siteFor(defaults(), "a.test").accents, false);
 });

@@ -7,8 +7,20 @@ import assert from "node:assert/strict";
 const image =
   'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="red"/></svg>';
 const server = createServer((req, res) => {
-  res.setHeader("Content-Type", "text/html");
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
   const dark = req.url === "/dark";
+  const previews = {
+    "/article": `<nav>FIELD NOTES</nav><article><h1>A quieter way to explore</h1><p>Ideas, observations, and thoughtful reading after sunset.</p><hr><p>Good design gives the important things space. Afterglow adds a gentle light only when you interact.</p><button>Save article</button></article>`,
+    "/shopping": `<nav>NORTH STUDIO</nav><h1>Everyday essentials</h1><div class="products"><section><div class="swatch"></div><h2>Desk lamp</h2><p>A warm companion for late nights.</p><button>Add to bag</button></section><section><div class="swatch alt"></div><h2>Notebook</h2><p>Room for your next idea.</p><button>View details</button></section></div>`,
+    "/app": `<nav>WORKSPACE / PROJECTS</nav><h1>Today’s work</h1><div class="workspace"><aside>Overview<br><br>Projects<br><br>Library</aside><section><h2>Design review</h2><p>Collect ideas and keep the next steps clear.</p><label>Project name <input value="Afterglow"></label><p><button>Create task</button></p></section></div>`,
+  };
+  if (previews[req.url]) {
+    res.end(
+      `<!doctype html><html><head><style>body{font:16px system-ui;margin:0;padding:40px;background:white;color:#222}nav{font-size:12px;color:#666;letter-spacing:2px}h1{font-size:32px}article{max-width:580px;margin:50px auto;line-height:1.7}button,input{font:inherit;padding:12px 20px;background:#eee;color:#222;border:1px solid #999;border-radius:8px}button{cursor:pointer}.products,.workspace{display:flex;gap:30px;margin-top:40px}.products section,.workspace section{padding:24px;border:1px solid #ddd;border-radius:16px;flex:1}.swatch{height:100px;background:#eee;border-radius:10px}.alt{background:#ddd}aside{width:140px;padding-top:20px}</style></head><body>${previews[req.url]}</body></html>`,
+    );
+    return;
+  }
+
   res.end(
     `<!doctype html><html><head><style>body{margin:0;padding:30px;background:${dark ? "#181818" : "#ffffff"};color:${dark ? "#eeeeee" : "#111111"};min-height:100vh}body.dark{background:#181818;color:#eeeeee}input,button{background:white;color:black}.card{padding:20px;border:1px solid #999}a{color:blue}.photo{width:40px;height:40px;background-image:url('${image}')}</style></head><body><h1>Fixture</h1><p>Readable article and product details.</p><a href="#">Product link</a><div class="card"><input aria-label="Name"><button onclick="this.textContent='Clicked'">Buy</button></div><img alt="Red image" src='${image}'><div class="photo"></div><video></video><canvas width="20" height="20"></canvas>${req.url === "/frame" ? "" : `<iframe src="http://127.0.0.1:${server.address().port}/frame"></iframe>`}<script>const c=document.querySelector('canvas').getContext('2d');c.fillStyle='red';c.fillRect(0,0,20,20);</script></body></html>`,
   );
@@ -118,9 +130,104 @@ try {
     { tab, url: `${base}/light` },
   );
   await popup.goto(`chrome-extension://${id}/popup.html`);
+  assert.equal(await popup.locator("#accents").isChecked(), false);
+  const button = page.locator(".card button");
+  await button.hover();
+  assert.equal(await button.getAttribute("data-afterglow-accent"), null);
+  await page.evaluate(() => {
+    const style = document.createElement("style");
+    style.textContent =
+      ".card button {box-shadow: 0 3px 4px rgb(40,40,40);outline:2px solid blue;}";
+    document.head.append(style);
+  });
+  await page.waitForTimeout(500);
+  await popup.locator("#accents").check();
+  await page.waitForTimeout(350);
+  await page.mouse.move(0, 0);
+  const original = await button.evaluate((e) => ({
+    shadow: getComputedStyle(e).boxShadow,
+    outline: getComputedStyle(e).outline,
+    rect: JSON.stringify(e.getBoundingClientRect()),
+  }));
+  await button.hover();
+  await page.waitForFunction(() =>
+    document
+      .querySelector(".card button")
+      .hasAttribute("data-afterglow-accent"),
+  );
+  const glowed = await button.evaluate((e) => ({
+    shadow: getComputedStyle(e).boxShadow,
+    outline: getComputedStyle(e).outline,
+    rect: JSON.stringify(e.getBoundingClientRect()),
+  }));
+  assert.ok(glowed.shadow.startsWith(original.shadow));
+  assert.ok(glowed.shadow.includes("185, 174, 245"));
+  assert.equal(glowed.outline, original.outline);
+  assert.equal(glowed.rect, original.rect);
+  await page.screenshot({ path: "accent-preview.png" });
+  await page.mouse.move(0, 0);
+  assert.equal(await button.getAttribute("data-afterglow-accent"), null);
+  assert.equal(
+    await button.evaluate((e) => getComputedStyle(e).boxShadow),
+    original.shadow,
+  );
+  await page.locator("input").click();
+  assert.equal(
+    await page.locator("input").getAttribute("data-afterglow-accent"),
+    null,
+  );
+  await page.keyboard.press("Tab");
+  assert.equal(await button.evaluate((e) => e.matches(":focus-visible")), true);
+  assert.ok(await button.getAttribute("data-afterglow-accent"));
+  await page.keyboard.press("Tab");
+  assert.equal(await button.getAttribute("data-afterglow-accent"), null);
+  // Mouse focus alone does not glow; hovering an ordinary text input does not glow either.
+  await button.click();
+  await page.mouse.move(0, 0);
+  assert.equal(await button.getAttribute("data-afterglow-accent"), null);
+  await page.evaluate(() => {
+    const b = document.createElement("button");
+    b.id = "dynamic-button";
+    b.textContent = "Dynamic";
+    document.body.append(b);
+  });
+  await page.locator("#dynamic-button").hover();
+  await page.waitForTimeout(350);
+  assert.ok(
+    await page.locator("#dynamic-button").getAttribute("data-afterglow-accent"),
+  );
+  await page.locator("#dynamic-button").evaluate((e) => (e.disabled = true));
+  await page.waitForTimeout(100);
+  assert.equal(
+    await page.locator("#dynamic-button").getAttribute("data-afterglow-accent"),
+    null,
+  );
+  await popup.locator("#accents").uncheck();
+  await page.waitForTimeout(350);
+  assert.equal(await page.locator("[data-afterglow-accent]").count(), 0);
+  assert.equal(await page.locator(".afterglow-accents").count(), 0);
+  await popup.locator("#accents").check();
+  await page.waitForTimeout(350);
+  await second.locator(".card button").hover();
+  await second.waitForTimeout(100);
+  assert.ok(
+    await second.locator(".card button").getAttribute("data-afterglow-accent"),
+  );
+  await page.evaluate(() => document.querySelector("#dynamic-button").remove());
+  await frame.locator(".card button").hover();
+  await frame.waitForTimeout(100);
+  assert.ok(
+    await frame.locator(".card button").getAttribute("data-afterglow-accent"),
+  );
+  console.log(
+    "PASS: opt-in hover/focus glow, original shadows and outlines, no layout shift, dynamic and disabled controls, cross-tab accents",
+  );
+
   await popup.locator("#original").focus();
   await popup.keyboard.press("Space");
   await expectStatus("Disabled");
+  assert.equal(await popup.locator("#accents").isChecked(), true);
+  assert.equal(await page.locator(".afterglow-accents").count(), 0);
   await second.waitForTimeout(600);
   assert.equal(
     await frame
@@ -138,17 +245,21 @@ try {
   await expectStatus("Afterglow active");
   await page.goto(`${base}/dark`);
   await expectStatus("Native dark theme");
+  assert.equal(await page.locator(".afterglow-accents").count(), 0);
   await popup.reload();
   assert.equal(await popup.locator('input[name="mode"]').count(), 2);
   // Saved Always dark choices from earlier versions use Automatic.
   await worker.evaluate(() =>
     chrome.storage.local.set({
-      "site:localhost": { enabled: true, force: true },
+      "site:localhost": { enabled: true, force: true, accents: true },
     }),
   );
   await expectStatus("Native dark theme");
   await popup.waitForTimeout(300);
   assert.equal(await popup.locator("#auto").isChecked(), true);
+  assert.equal(await popup.locator("#accents").isChecked(), true);
+  assert.equal(await popup.locator("#accents").isDisabled(), false);
+  assert.equal(await page.locator(".afterglow-accents").count(), 0);
   assert.equal(await popup.locator("#hint").textContent(), "");
   await popup.locator("#global").uncheck();
   await expectStatus("Disabled");
@@ -208,7 +319,7 @@ try {
   );
   await worker.evaluate(() =>
     chrome.storage.local.set({
-      "site:persist.test": { enabled: false, force: true },
+      "site:persist.test": { enabled: false, force: true, accents: true },
     }),
   );
   const recoveryTabs = [];
@@ -252,6 +363,16 @@ try {
   await page.evaluate(() => {
     window.afterglowDocumentIdentity = "unchanged";
   });
+  const previewPage = await context.newPage({
+    viewport: { width: 900, height: 600 },
+  });
+  for (const kind of ["article", "shopping", "app"]) {
+    await previewPage.goto(`${base}/${kind}`);
+    await previewPage.waitForTimeout(500);
+    await previewPage.locator("button").first().hover();
+    await previewPage.screenshot({ path: `accent-${kind}-preview.png` });
+  }
+  await previewPage.close();
   // Reload the extension while the document and old content script stay alive.
   try {
     await worker.evaluate(() => chrome.runtime.reload());
@@ -275,6 +396,9 @@ try {
   );
   worker = await replacement;
   await expectStatus("Afterglow active");
+  await button.hover();
+  await page.waitForTimeout(150);
+  assert.ok(await button.getAttribute("data-afterglow-accent"));
   assert.equal(
     await page.evaluate(() => window.afterglowDocumentIdentity),
     "unchanged",
@@ -355,7 +479,7 @@ try {
     (await w.evaluate(() => chrome.storage.local.get(null)))[
       "site:persist.test"
     ],
-    { enabled: false, force: true },
+    { enabled: false, force: true, accents: true },
   );
   console.log("PASS: browser restart persistence");
 } finally {

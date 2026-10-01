@@ -191,3 +191,13 @@ footer {
     transition: none;
   }
 }
+
+#accents-detail {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #a8adb9;
+  margin: 8px 0 0;
+}
+.accents {
+  margin-top: 8px;
+}

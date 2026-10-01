@@ -1,5 +1,6 @@
 import { fromStorage, siteFor, supported, hostname } from "./settings";
 const global = document.getElementById("global") as HTMLInputElement;
+const accents = document.getElementById("accents") as HTMLInputElement;
 const modes = document.getElementById("modes") as HTMLFieldSetElement;
 const radios = [
   ...document.querySelectorAll<HTMLInputElement>('input[name="mode"]'),
@@ -15,6 +16,7 @@ let host = "",
 function lock() {
   global.disabled = pending;
   modes.disabled = pending || !supported(url);
+  accents.disabled = pending || !supported(url);
 }
 async function readStatus() {
   try {
@@ -42,6 +44,17 @@ async function render() {
     ok = supported(url),
     mode = !p.enabled ? "original" : "auto";
   global.checked = s.enabled;
+  accents.checked = p.accents;
+  text(
+    "accents-detail",
+    !ok
+      ? "Unavailable on this page."
+      : !s.enabled
+        ? "Saved while paused. Only with Afterglow’s dark theme."
+        : !p.enabled
+          ? "Saved for Automatic mode. Only with Afterglow’s dark theme."
+          : "Only with Afterglow’s dark theme; native dark sites stay unchanged.",
+  );
   radios.forEach((r) => (r.checked = r.value === mode));
   lock();
   text("host", host || "This page");
@@ -97,9 +110,10 @@ async function render() {
     );
   }
 }
-async function update(scope: "global" | "site", mode?: string) {
+async function update(scope: "global" | "site" | "accents", mode?: string) {
   if (pending) return;
   const enabled = global.checked;
+  const accentsEnabled = accents.checked;
   pending = true;
   ++revision;
   lock();
@@ -111,6 +125,7 @@ async function update(scope: "global" | "site", mode?: string) {
       host,
       enabled: scope === "global" ? enabled : mode !== "original",
       force: false,
+      accents: accentsEnabled,
       reset: scope === "site" && mode === "auto",
     });
     if (result.error) throw Error(result.error);
@@ -125,6 +140,7 @@ async function update(scope: "global" | "site", mode?: string) {
     lock();
   }
 }
+accents.addEventListener("change", () => void update("accents"));
 global.addEventListener("change", () => void update("global"));
 radios.forEach((r) =>
   r.addEventListener("change", () => {

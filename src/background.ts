@@ -1,4 +1,4 @@
-import { fromStorage, hostname, supported, keyFor } from "./settings";
+import { fromStorage, hostname, supported, keyFor, siteFor } from "./settings";
 let writes = Promise.resolve();
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   const run = async () => {
@@ -42,15 +42,19 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
             message.host &&
             hostname(`https://${message.host}`) === message.host
           ) {
-            if (message.reset)
-              await chrome.storage.local.remove(keyFor(message.host));
-            else
-              await chrome.storage.local.set({
-                [keyFor(message.host)]: {
-                  enabled: message.enabled === true,
-                  force: false,
-                },
-              });
+            const current = siteFor(
+              fromStorage(await chrome.storage.local.get(null)),
+              message.host,
+            );
+            const updated =
+              message.scope === "accents"
+                ? { ...current, accents: message.accents === true }
+                : {
+                    ...current,
+                    enabled: message.reset ? true : message.enabled === true,
+                    force: false,
+                  };
+            await chrome.storage.local.set({ [keyFor(message.host)]: updated });
           }
         });
       await writes;

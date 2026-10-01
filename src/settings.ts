@@ -1,8 +1,8 @@
-export type Site = { enabled: boolean; force: boolean };
+export type Site = { enabled: boolean; force: boolean; accents: boolean };
 export type Settings = { enabled: boolean; sites: Record<string, Site> };
 export const defaults = (): Settings => ({ enabled: true, sites: {} });
 export const siteFor = (s: Settings, host: string): Site =>
-  s.sites[host] ?? { enabled: true, force: false };
+  s.sites[host] ?? { enabled: true, force: false, accents: false };
 export const effective = (s: Settings, host: string) =>
   s.enabled && siteFor(s, host).enabled;
 export function hostname(url: string): string {
@@ -34,6 +34,7 @@ export function fromStorage(raw: Record<string, unknown>): Settings {
         enabled: v.enabled !== false,
         // Legacy Always dark selections now behave as Automatic.
         force: false,
+        accents: v.accents === true,
       };
     }
   return s;
