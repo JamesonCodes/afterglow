@@ -178,10 +178,11 @@ fieldset:disabled .mode {
   display: none;
 }
 footer {
-  margin-top: 18px;
-  text-align: center;
+  margin-top: 8px;
+  text-align: left;
   color: #a8adb9;
-  font-size: 10px;
+  font-size: 11px;
+  line-height: 1.5;
 }
 @media (prefers-reduced-motion: reduce) {
   input[type="checkbox"]:before {
