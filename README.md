@@ -7,7 +7,7 @@
 
 Afterglow brings a comfortable charcoal theme to light websites, preserves existing dark designs, and keeps photos, videos, and canvas content in their original colors. Built as a locally installable Chrome extension, it combines automatic theme detection with simple controls and preferences that stay on your computer.
 
-**Current version:** 0.1.15 · **Distribution:** unpacked extension; Chrome Web Store publication is not included.
+**Current version:** 0.1.16 · **Distribution:** unpacked extension; Chrome Web Store publication is not included.
 
 ## Preview
 
@@ -132,3 +132,5 @@ The build applies compatibility adjustments for Manifest V3 and stale extension 
 Chrome automatic darkening: Afterglow checks Chrome’s resolved Canvas color and sampled surfaces’ color-scheme declarations before applying its own theme. When browser darkening covers most samples, the popup says “Keeping Chrome’s automatic dark theme.” Site opt-outs and native dark support are respected. This is a rendering heuristic, not access to Chrome flags; browser-version differences and mixed-theme pages may affect detection. No debugger permission, browser setting changes, or network calls are added.
 
 Amazon.com compatibility: observed product-image and metadata components no longer multiply their colors against dark surfaces. Known promotional text palettes retain their original dark/light foregrounds over preserved artwork. These scoped rules follow Afterglow’s theme lifecycle and do not modify image pixels or layout. Amazon experiments, other storefront countries, and changed component classes may require further verification. White backgrounds baked into product photographs remain part of the original images.
+
+Transparent-page detection also considers simple full-viewport, negative-stack background layers and the root’s native Canvas color. This covers documentation layouts such as the verified TypeSafe page without a hostname exception. Hidden or partial-size layers are excluded; explicit foreground surfaces retain priority. Complex stacking contexts, pseudo-element artwork, gradients, and layers beyond the bounded candidate search remain heuristic limitations.

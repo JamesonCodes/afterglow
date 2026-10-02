@@ -31,45 +31,95 @@ function surface(element: Element): Element | null {
     e = e.parentElement;
   return e;
 }
-function background(element: Element): Color | null {
-  let result: Color = [0, 0, 0, 0];
+// Decorative full-viewport backdrops can be siblings, invisible to hit testing
+// because they use pointer-events:none. Only consider simple solid backdrops.
+function pageBackdrops(): Color[] {
+  const layers: { color: Color; z: number }[] = [];
+  for (const e of [
+    ...document.querySelectorAll("body div:empty,body span:empty"),
+  ].slice(0, 512)) {
+    if (e.closest(".darkreader,.afterglow-owned")) continue;
+    const style = getComputedStyle(e),
+      rect = e.getBoundingClientRect();
+    if (
+      !["fixed", "absolute"].includes(style.position) ||
+      style.pointerEvents !== "none" ||
+      !Number.isFinite(Number(style.zIndex)) ||
+      Number(style.zIndex) >= 0 ||
+      style.backgroundImage !== "none" ||
+      style.visibility !== "visible" ||
+      rect.left > 0 ||
+      rect.top > 0 ||
+      rect.right < innerWidth ||
+      rect.bottom < innerHeight
+    )
+      continue;
+    let visible = true;
+    for (let n: Element | null = e; n; n = n.parentElement) {
+      const s = getComputedStyle(n);
+      if (
+        Number(s.opacity) !== 1 ||
+        s.filter !== "none" ||
+        s.mixBlendMode !== "normal"
+      ) {
+        visible = false;
+        break;
+      }
+    }
+    const color = rgb(style.backgroundColor);
+    if (visible && color && color[3] > 0)
+      layers.push({ color, z: Number(style.zIndex) });
+  }
+  return layers.sort((a, b) => b.z - a.z).map((layer) => layer.color);
+}
+function background(
+  element: Element,
+  canvas: Color,
+  backdrops: () => Color[],
+  hasText: boolean,
+): Color | null {
+  const result: Color = [0, 0, 0, 0];
+  function add(color: Color) {
+    const contribution = (1 - result[3]) * color[3];
+    for (let i = 0; i < 3; i++) result[i] += color[i] * contribution;
+    result[3] += contribution;
+  }
   for (let e: Element | null = element; e; e = e.parentElement) {
     const style = getComputedStyle(e);
     if (e.matches(media) || style.backgroundImage !== "none") continue;
     const color = rgb(style.backgroundColor);
-    if (!color) continue;
-    const contribution = (1 - result[3]) * color[3];
-    for (let i = 0; i < 3; i++) result[i] += color[i] * contribution;
-    result[3] += contribution;
+    if (color) add(color);
     if (result[3] >= 0.999) break;
   }
-  // The browser's default canvas is white, but only use it once styles exist.
-  if (result[3] === 0) return null;
-  for (let i = 0; i < 3; i++) result[i] += 255 * (1 - result[3]);
-  result[3] = 1;
+  if (result[3] < 0.999) for (const color of backdrops()) add(color);
+  if (result[3] === 0 && !hasText) return null;
+  add(canvas);
   return result;
 }
-// Chrome resolves Canvas to a dark color under automatic renderer darkening.
-// Force a light scheme on this isolated probe so native dark schemes do not
-// produce a false positive. Never leave probe nodes in the page.
-function browserDarkening(): boolean {
-  if (matchMedia("(forced-colors: active)").matches) return false;
+function canvasColor(scheme: string): Color | null {
   const probe = document.createElement("span");
   probe.className = "afterglow-owned";
   probe.style.setProperty("all", "initial", "important");
   for (const [property, value] of Object.entries({
     display: "none",
     "background-color": "canvas",
-    "color-scheme": "light",
+    "color-scheme": scheme,
   }))
     probe.style.setProperty(property, value, "important");
   try {
     document.documentElement.append(probe);
-    const color = rgb(getComputedStyle(probe).backgroundColor);
-    return !!color && color[3] === 1 && light(color) < 0.32;
+    return rgb(getComputedStyle(probe).backgroundColor);
   } finally {
     probe.remove();
   }
+}
+// Chrome resolves Canvas to a dark color under automatic renderer darkening.
+// Force a light scheme on this isolated probe so native dark schemes do not
+// produce a false positive. Never leave probe nodes in the page.
+function browserDarkening(): boolean {
+  if (matchMedia("(forced-colors: active)").matches) return false;
+  const color = canvasColor("light");
+  return !!color && color[3] === 1 && light(color) < 0.32;
 }
 export function nativeDark(): NativeTheme {
   if (!document.body || innerWidth <= 0 || innerHeight <= 0) return "unknown";
@@ -111,6 +161,11 @@ export function nativeDark(): NativeTheme {
       });
   }
   const autoDark = browserDarkening();
+  const canvas =
+    canvasColor(getComputedStyle(document.documentElement).colorScheme) ??
+    ([255, 255, 255, 1] as Color);
+  let layers: Color[] | undefined;
+  const backdrops = () => (layers ??= pageBackdrops());
   let browserDark = 0;
   let dark = 0,
     total = 0;
@@ -121,8 +176,7 @@ export function nativeDark(): NativeTheme {
       const hit = document.elementFromPoint(px, py);
       const e = hit && surface(hit);
       if (!e) continue;
-      const bg =
-        background(e) ?? (texts.length ? ([255, 255, 255, 1] as Color) : null);
+      const bg = background(e, canvas, backdrops, texts.length > 0);
       const nearest = texts.reduce<(typeof texts)[number] | undefined>(
         (best, t) =>
           !best ||

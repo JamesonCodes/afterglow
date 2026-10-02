@@ -1,13 +1,13 @@
 {
   "name": "afterglow",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
     "check": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
-    "test:browser": "npm run build && node tests/browser.mjs && node tests/browser-dark.mjs && node tests/browser-amazon.mjs"
+    "test:browser": "npm run build && node tests/browser.mjs && node tests/browser-dark.mjs && node tests/browser-amazon.mjs && node tests/browser-backdrops.mjs"
   },
   "dependencies": {
     "darkreader": "4.9.133"
