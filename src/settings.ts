@@ -5,7 +5,7 @@ export type Settings = {
 };
 export const defaults = (): Settings => ({
   enabled: true,
-  sites: {},
+  sites: Object.create(null),
 });
 export const siteFor = (s: Settings, host: string): Site =>
   s.sites[host] ?? { enabled: true, force: false };

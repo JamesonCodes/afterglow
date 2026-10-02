@@ -6,7 +6,18 @@ import { resolve } from "node:path";
 import assert from "node:assert/strict";
 const image =
   'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="red"/></svg>';
+const extensionPath = resolve(process.env.AFTERGLOW_EXTENSION_PATH ?? "dist");
 const server = createServer((req, res) => {
+  if (req.url === "/broker.css") {
+    res.setHeader("Content-Type", "text/css; charset=utf-8");
+    res.end("body { color: red; }");
+    return;
+  }
+  if (req.url === "/not-css") {
+    res.setHeader("Content-Type", "application/json");
+    res.end('{"private":"not a stylesheet"}');
+    return;
+  }
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   if (req.url === "/default-canvas") {
     res.end(
@@ -58,8 +69,8 @@ try {
     headless: true,
     args: [
       "--enable-unsafe-extension-debugging",
-      `--disable-extensions-except=${resolve("dist")}`,
-      `--load-extension=${resolve("dist")}`,
+      `--disable-extensions-except=${extensionPath}`,
+      `--load-extension=${extensionPath}`,
     ],
   });
   const page = await context.newPage();
@@ -69,6 +80,7 @@ try {
     (await context.waitForEvent("serviceworker"));
   const id = new URL(worker.url()).host;
   const errors = [];
+  let checkingLive = false;
   const invalidationErrors = [];
   page.on("console", (m) => {
     if (
@@ -80,7 +92,10 @@ try {
   page.on("console", (m) => {
     if (m.type() === "error") console.log(m.text());
   });
-  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("pageerror", (e) => {
+    if (checkingLive) console.log("LIVE PAGE ERROR", e.message);
+    else errors.push(e.message);
+  });
   await page.goto(`${base}/light`);
   const tab = await worker.evaluate(
     async (url) => (await chrome.tabs.query({})).find((t) => t.url === url).id,
@@ -100,6 +115,50 @@ try {
     assert.equal((await status()).status, value);
   }
   await expectStatus("Afterglow active");
+
+  const contentRequest = async (message) => {
+    const [result] = await worker.evaluate(
+      async ({ tab, message }) =>
+        chrome.scripting.executeScript({
+          target: { tabId: tab },
+          func: (m) =>
+            new Promise((resolve) => chrome.runtime.sendMessage(m, resolve)),
+          args: [message],
+        }),
+      { tab, message },
+    );
+    return result.result;
+  };
+  assert.match(
+    (await contentRequest({ type: "update", scope: "global", enabled: false }))
+      .error,
+    /Unauthorized/,
+  );
+  assert.match(
+    (await contentRequest({ type: "recover", tabId: tab })).error,
+    /Unauthorized/,
+  );
+  assert.equal(
+    (await contentRequest({ type: "fetch-css", url: base + "/broker.css" }))
+      .text,
+    "body { color: red; }",
+  );
+  assert.match(
+    (await contentRequest({ type: "fetch-css", url: base + "/not-css" })).error,
+    /successful CSS/,
+  );
+  assert.match(
+    (await contentRequest({ type: "fetch-css", url: "file:///etc/passwd" }))
+      .error,
+    /Unsupported/,
+  );
+  assert.equal(
+    (await worker.evaluate(() => chrome.storage.local.get("enabled"))).enabled,
+    undefined,
+  );
+  console.log(
+    "PASS: website content scripts cannot write preferences or request recovery; stylesheet broker accepts CSS and rejects invalid protocols/non-CSS",
+  );
   assert.notEqual(
     await page
       .locator("body")
@@ -155,6 +214,29 @@ try {
   );
   await popup.goto(`chrome-extension://${id}/popup.html`);
   assert.equal(await popup.locator("#accents,#saved,footer").count(), 0);
+  assert.ok((await popup.getByRole("switch").getAttribute("id")) === "global");
+  await popup.locator("#global").focus();
+  assert.equal(
+    await popup.locator("#global").evaluate((e) => e.matches(":focus")),
+    true,
+  );
+  const unavailable = await context.newPage();
+  await unavailable.addInitScript(() => {
+    chrome.tabs.query = async () => [{ id: 999, url: "chrome://extensions" }];
+  });
+  await unavailable.goto(`chrome-extension://${id}/popup.html`);
+  await unavailable.waitForFunction(
+    () =>
+      document.getElementById("status").textContent ===
+      "Unavailable on this page",
+  );
+  assert.equal(await unavailable.locator("#auto").isDisabled(), true);
+  assert.match(
+    await unavailable.locator("#hint").textContent(),
+    /Chrome protects/,
+  );
+  await unavailable.close();
+
   await worker.evaluate(() => chrome.storage.local.set({ accents: true }));
   await page.locator(".card button").hover();
   assert.equal(
@@ -260,6 +342,7 @@ try {
   await page.screenshot({ path: "theme-preview.png" });
   assert.deepEqual(errors, []);
   if (process.env.AFTERGLOW_LIVE_TEST === "1") {
+    checkingLive = true;
     for (const url of [
       "https://en.wikipedia.org/wiki/Moon",
       "https://books.toscrape.com",
@@ -287,6 +370,9 @@ try {
       }
     }
   }
+  checkingLive = false;
+  await page.goto(`${base}/light`);
+  await expectStatus("Afterglow active");
   console.log(
     "PASS: native detection, theme switching, dynamic content, media, forms, popup appearance choices, global precedence and cross-tab updates",
   );
@@ -389,7 +475,7 @@ try {
   });
   replacement.catch(() => {});
   const session = await context.browser().newBrowserCDPSession();
-  await session.send("Extensions.loadUnpacked", { path: resolve("dist") });
+  await session.send("Extensions.loadUnpacked", { path: extensionPath });
   const reloadedPopup = await context.newPage();
   await reloadedPopup.goto(`chrome-extension://${id}/popup.html`);
   await reloadedPopup.evaluate(() =>
@@ -460,13 +546,13 @@ try {
     headless: true,
     args: [
       "--enable-unsafe-extension-debugging",
-      `--disable-extensions-except=${resolve("dist")}`,
-      `--load-extension=${resolve("dist")}`,
+      `--disable-extensions-except=${extensionPath}`,
+      `--load-extension=${extensionPath}`,
     ],
   });
   const restartSession = await context.browser().newBrowserCDPSession();
   await restartSession.send("Extensions.loadUnpacked", {
-    path: resolve("dist"),
+    path: extensionPath,
   });
   const restartedPage = await context.newPage();
   await restartedPage.goto(`${base}/light`);

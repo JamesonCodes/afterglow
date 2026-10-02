@@ -1,17 +1,10 @@
+import { fetchStylesheet } from "./stylesheets";
 import { fromStorage, hostname, supported, keyFor, siteFor } from "./settings";
 let writes = Promise.resolve();
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   const run = async () => {
     if (message.type === "fetch-css" && sender.tab) {
-      if (typeof message.url !== "string" || !hostname(message.url))
-        throw Error("Unsupported stylesheet URL");
-      const response = await fetch(message.url, {
-        credentials: "omit",
-        signal: AbortSignal.timeout(10000),
-      });
-      if (!response.ok) throw Error("Stylesheet could not be fetched");
-      const text = await response.text();
-      if (text.length > 3000000) throw Error("Stylesheet too large");
+      const text = await fetchStylesheet(message.url);
       return { text };
     }
     if (message.type === "context") {
@@ -22,7 +15,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
         settings: fromStorage(await chrome.storage.local.get(null)),
       };
     }
-    // Only the extension popup may change preferences.
+    // Only documents belonging to this extension may change preferences.
     if (!sender.url?.startsWith(chrome.runtime.getURL("")))
       throw new Error("Unauthorized");
     if (message.type === "recover" && Number.isInteger(message.tabId)) {

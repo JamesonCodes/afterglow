@@ -62,3 +62,16 @@ test("removed accent preferences are ignored without changing site choices", () 
   assert.equal("accents" in s, false);
   assert.equal(siteFor(s, "a.test").enabled, false);
 });
+
+test("hostname records do not inherit JavaScript object properties", () => {
+  assert.equal(effective(defaults(), "constructor"), true);
+  assert.equal(effective(defaults(), "toString"), true);
+  const s = fromStorage({
+    "site:__proto__": { enabled: false },
+    "site:constructor": { enabled: false },
+  });
+  assert.equal(effective(s, "__proto__"), false);
+  assert.equal(effective(s, "constructor"), false);
+  assert.equal(effective(s, "example.com"), true);
+  assert.equal(Object.getPrototypeOf(s.sites), null);
+});

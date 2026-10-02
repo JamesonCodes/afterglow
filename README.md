@@ -7,7 +7,7 @@
 
 Afterglow brings a comfortable charcoal theme to light websites, preserves existing dark designs, and keeps photos, videos, and canvas content in their original colors. Built as a locally installable Chrome extension, it combines automatic theme detection with simple controls and preferences that stay on your computer.
 
-**Current version:** 0.1.10 · **Distribution:** unpacked extension; Chrome Web Store publication is not included.
+**Current version:** 0.1.11 · **Distribution:** unpacked extension; Chrome Web Store publication is not included.
 
 ## Preview
 
@@ -109,13 +109,13 @@ dist/                Generated unpacked extension (not committed)
 | `storage` | Save preferences locally. |
 | `scripting` | Reconnect content scripts to existing tabs after installation or reload. |
 
-The background worker can fetch a website's stylesheets when cross-origin rules prevent the theme engine from reading them directly. Afterglow has no analytics, account system, cloud settings, remote executable code, or external application backend.
+The background worker can fetch a website's stylesheets when cross-origin rules prevent the theme engine from reading them directly. These brokered requests omit cookies and authentication credentials, require a CSS content type, and enforce a 3 MB streamed response limit and 10-second timeout. The theme engine can also read same-origin stylesheets using normal browser requests. Afterglow has no analytics, account system, cloud settings, remote executable code, or external application backend.
 
 ## Compatibility
 
 Chrome internal pages, the Chrome Web Store, and the built-in PDF viewer cannot be themed. Native-dark detection is heuristic; unusual layouts may be misclassified. Select **Original site** when you prefer a website's own appearance.
 
-Closed shadow roots, complex charts, protected embeds, and inaccessible stylesheets may need individual adjustments. Background images intentionally remain unchanged, so white image backgrounds can still appear bright. Running another dark-mode extension on the same page can cause conflicts.
+Closed shadow roots, complex charts, protected embeds, and inaccessible or incorrectly served stylesheets may need individual adjustments. Background images intentionally remain unchanged, so white image backgrounds can still appear bright. Running another dark-mode extension on the same page can cause conflicts.
 
 Dark Reader's inline page proxies are omitted for Manifest V3 compatibility. Consequently, some changes made directly through JavaScript stylesheet APIs may not be observed. Local fixtures cover layouts representative of YouTube and LinkedIn; authenticated live pages still require manual verification.
 
