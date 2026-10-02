@@ -1,6 +1,5 @@
 import { fromStorage, siteFor, supported, hostname } from "./settings";
 const global = document.getElementById("global") as HTMLInputElement;
-const accents = document.getElementById("accents") as HTMLInputElement;
 const modes = document.getElementById("modes") as HTMLFieldSetElement;
 const radios = [
   ...document.querySelectorAll<HTMLInputElement>('input[name="mode"]'),
@@ -16,7 +15,6 @@ let host = "",
 function lock() {
   global.disabled = pending;
   modes.disabled = pending || !supported(url);
-  accents.disabled = pending;
 }
 async function readStatus() {
   try {
@@ -44,13 +42,6 @@ async function render() {
     ok = supported(url),
     mode = !p.enabled ? "original" : "auto";
   global.checked = s.enabled;
-  accents.checked = s.accents;
-  text(
-    "accents-detail",
-    !s.enabled
-      ? "Saved while paused. Applies across Afterglow-themed websites."
-      : "Applies across Afterglow-themed websites; native dark sites stay unchanged.",
-  );
   radios.forEach((r) => (r.checked = r.value === mode));
   lock();
   text("host", host || "This page");
@@ -59,12 +50,6 @@ async function render() {
     s.enabled
       ? "Automatic dark mode is on"
       : "Paused everywhere · site choices are saved",
-  );
-  text(
-    "saved",
-    ok
-      ? "Saved for this website. Changes apply automatically."
-      : "Site preferences are unavailable on this page.",
   );
   if (!ok) {
     text("status", "Unavailable on this page");
@@ -106,10 +91,9 @@ async function render() {
     );
   }
 }
-async function update(scope: "global" | "site" | "accents", mode?: string) {
+async function update(scope: "global" | "site", mode?: string) {
   if (pending) return;
   const enabled = global.checked;
-  const accentsEnabled = accents.checked;
   pending = true;
   ++revision;
   lock();
@@ -121,7 +105,6 @@ async function update(scope: "global" | "site" | "accents", mode?: string) {
       host,
       enabled: scope === "global" ? enabled : mode !== "original",
       force: false,
-      accents: accentsEnabled,
       reset: scope === "site" && mode === "auto",
     });
     if (result.error) throw Error(result.error);
@@ -136,7 +119,6 @@ async function update(scope: "global" | "site" | "accents", mode?: string) {
     lock();
   }
 }
-accents.addEventListener("change", () => void update("accents"));
 global.addEventListener("change", () => void update("global"));
 radios.forEach((r) =>
   r.addEventListener("change", () => {

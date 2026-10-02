@@ -160,12 +160,6 @@ fieldset:disabled .mode {
   opacity: 0.55;
   cursor: default;
 }
-#saved {
-  font-size: 11px;
-  line-height: 1.5;
-  color: #a8adb9;
-  margin: 14px 0 0;
-}
 #hint:not(:empty) {
   padding: 12px;
   border-radius: 9px;
@@ -179,25 +173,14 @@ fieldset:disabled .mode {
 #hint:empty {
   display: none;
 }
-footer {
-  margin-top: 8px;
-  text-align: left;
-  color: #a8adb9;
-  font-size: 11px;
-  line-height: 1.5;
-}
 @media (prefers-reduced-motion: reduce) {
   input[type="checkbox"]:before {
     transition: none;
   }
 }
 
-#accents-detail {
-  font-size: 11px;
-  line-height: 1.5;
-  color: #a8adb9;
-  margin: 8px 0 0;
-}
-.accents {
-  margin-top: 8px;
+.divider {
+  border: 0;
+  border-top: 1px solid #30343e;
+  margin: 20px 0 0;
 }

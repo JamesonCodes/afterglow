@@ -7,13 +7,13 @@
 
 Afterglow brings a comfortable charcoal theme to light websites, preserves existing dark designs, and keeps photos, videos, and canvas content in their original colors. Built as a locally installable Chrome extension, it combines automatic theme detection with simple controls and preferences that stay on your computer.
 
-**Current version:** 0.1.9 · **Distribution:** unpacked extension; Chrome Web Store publication is not included.
+**Current version:** 0.1.10 · **Distribution:** unpacked extension; Chrome Web Store publication is not included.
 
 ## Preview
 
 ![Afterglow on a representative shopping fixture](docs/images/theme-preview.png)
 
-*A local browser fixture showing charcoal surfaces, adapted website colors, softer secondary text, and an optional lavender interaction glow.*
+*A local browser fixture showing charcoal surfaces, adapted website colors, softer secondary text, and clear form controls.*
 
 ## Features
 
@@ -21,7 +21,6 @@ Afterglow brings a comfortable charcoal theme to light websites, preserves exist
 - **Website identity preserved:** adapts original link, button, and status colors while retaining layout, typography, and meaningful visual distinctions.
 - **Media stays natural:** avoids whole-page inversion and image filtering; photos, videos, canvas, and background images retain their colors.
 - **Simple appearance controls:** choose Automatic or Original site for each hostname, or pause Afterglow globally without losing preferences.
-- **Optional Afterglow accents:** one global switch adds a restrained lavender glow to keyboard-focused controls and hovered buttons on Afterglow-themed pages.
 - **Immediate updates:** settings apply across open tabs for the same website and eligible embedded frames.
 - **Automatic tab recovery:** reconnects after extension reloads without navigating pages or clearing unsaved drafts.
 - **Local preferences:** no account, analytics, settings sync, or Afterglow backend.
@@ -30,7 +29,7 @@ Afterglow brings a comfortable charcoal theme to light websites, preserves exist
 
 Afterglow uses charcoal `#181A1F` and soft off-white `#E6E8ED` as its theme baseline. Dark Reader's dynamic engine adapts the website's existing colors, maintaining differences between surfaces, form fields, primary text, and secondary information.
 
-Lavender `#B9AEF5` appears in the extension's branding and optional interaction accents. The glow preserves existing shadows and focus outlines, introduces no animation, and stays off by default. Native dark websites remain untouched.
+Lavender `#B9AEF5` appears in the extension's branding. Page styling preserves the website's own interaction treatments. Native dark websites remain untouched.
 
 ## Engineering highlights
 
@@ -40,7 +39,6 @@ Lavender `#B9AEF5` appears in the extension's branding and optional interaction 
 | Dynamic pages | Debounced DOM, stylesheet, and theme-attribute changes trigger reevaluation without continuous polling. Afterglow removes its own theme before measuring original colors. |
 | Settings | `chrome.storage.local` stores global preferences and exact-hostname overrides. Paths share settings; subdomains remain independent. Frames follow the top-level site's preference. |
 | Lifecycle | A background service worker coordinates settings, page status, and recovery. Content-script disposal and duplicate-injection guards handle extension reloads. |
-| Interaction accents | Delegated pointer and focus events cover dynamically inserted controls. A separate styling layer preserves existing shadows and removes its attributes, styles, and listeners when inactive. |
 | Packaging | esbuild bundles executable code locally. Dark Reader is pinned to 4.9.133, with attribution included in the built extension. |
 
 ## Getting started
@@ -70,7 +68,6 @@ Existing eligible tabs connect automatically. After making changes, rebuild and 
 | Afterglow across the web | Enables or pauses the extension globally, preserving saved site choices. |
 | Automatic | Applies Afterglow to light pages and preserves detected native dark themes. |
 | Original site | Restores the website's original appearance for that hostname. |
-| Afterglow accents | Enables subtle focus and button-hover glow globally, only while Afterglow's generated theme is active. |
 
 Changes save immediately. Automatic mode operates independently of your operating system's appearance setting.
 
@@ -88,7 +85,7 @@ The browser suite builds the extension and runs it in a disposable Chromium prof
 - Settings precedence, hostname isolation, legacy preference handling, and persistence across browser restarts.
 - Native dark detection, layered backgrounds, delayed styles, theme switching, and dynamic content.
 - Popup interactions, forms, embedded frames, media colors, and distinct link and status colors.
-- Keyboard focus, hover accents, disabled controls, preserved shadows and outlines, and layout stability.
+- Keyboard operation and removal of retired accent controls and styling.
 - Recovery across ten open tabs, retained form drafts, duplicate-injection safety, and invalid-context errors.
 
 Article, shopping, and web-app fixtures generate visual previews in `design-previews/`. To capture an earlier build for comparison, run `AFTERGLOW_DESIGN_BASELINE=1 node tests/browser.mjs` before building the revised theme. This flag changes preview filenames and skips the new color-distinction assertions; it does not alter styling.
@@ -96,7 +93,7 @@ Article, shopping, and web-app fixtures generate visual previews in `design-prev
 ## Project structure
 
 ```text
-src/                 Theme application, detection, settings, accents, and popup logic
+src/                 Theme application, detection, settings, and popup logic
 public/              Manifest, popup markup/styles, and extension icons
 assets/              Brand artwork
 tests/              Settings tests and browser fixtures
@@ -118,7 +115,7 @@ The background worker can fetch a website's stylesheets when cross-origin rules 
 
 Chrome internal pages, the Chrome Web Store, and the built-in PDF viewer cannot be themed. Native-dark detection is heuristic; unusual layouts may be misclassified. Select **Original site** when you prefer a website's own appearance.
 
-Closed shadow roots, complex charts, protected embeds, and inaccessible stylesheets may need individual adjustments. Optional accents do not cover shadow-root controls. Background images intentionally remain unchanged, so white image backgrounds can still appear bright. Running another dark-mode extension on the same page can cause conflicts.
+Closed shadow roots, complex charts, protected embeds, and inaccessible stylesheets may need individual adjustments. Background images intentionally remain unchanged, so white image backgrounds can still appear bright. Running another dark-mode extension on the same page can cause conflicts.
 
 Dark Reader's inline page proxies are omitted for Manifest V3 compatibility. Consequently, some changes made directly through JavaScript stylesheet APIs may not be observed. Local fixtures cover layouts representative of YouTube and LinkedIn; authenticated live pages still require manual verification.
 

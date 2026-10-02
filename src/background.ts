@@ -1,8 +1,5 @@
 import { fromStorage, hostname, supported, keyFor, siteFor } from "./settings";
-let writes = chrome.storage.local.get(null).then(async (raw) => {
-  if (typeof raw.accents !== "boolean")
-    await chrome.storage.local.set({ accents: fromStorage(raw).accents });
-});
+let writes = Promise.resolve();
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   const run = async () => {
     if (message.type === "fetch-css" && sender.tab) {
@@ -40,11 +37,8 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
             await chrome.storage.local.set({
               enabled: message.enabled === true,
             });
-          else if (message.scope === "accents")
-            await chrome.storage.local.set({
-              accents: message.accents === true,
-            });
           else if (
+            message.scope === "site" &&
             typeof message.host === "string" &&
             message.host &&
             hostname(`https://${message.host}`) === message.host

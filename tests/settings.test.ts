@@ -54,12 +54,11 @@ test("protected and malformed URLs", () => {
   assert.equal(supported("https://example.com"), true);
 });
 
-test("global accents migrate legacy opt-ins and honor explicit global choices", () => {
-  const raw = { "site:a.test": { enabled: false, accents: true } };
-  const s = fromStorage(raw);
-  assert.equal(s.accents, true);
+test("removed accent preferences are ignored without changing site choices", () => {
+  const s = fromStorage({
+    accents: true,
+    "site:a.test": { enabled: false, accents: true },
+  });
+  assert.equal("accents" in s, false);
   assert.equal(siteFor(s, "a.test").enabled, false);
-  assert.equal(fromStorage({ ...raw, accents: false }).accents, false);
-  assert.equal(fromStorage({ accents: true }).accents, true);
-  assert.equal(defaults().accents, false);
 });

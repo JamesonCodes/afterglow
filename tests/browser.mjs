@@ -32,7 +32,7 @@ const server = createServer((req, res) => {
   }
 
   const previews = {
-    "/article": `<nav>FIELD NOTES</nav><article><h1>A quieter way to explore</h1><p>Ideas, observations, and thoughtful reading after sunset.</p><hr><p>Good design gives the important things space. Afterglow adds a gentle light only when you interact.</p><button>Save article</button></article>`,
+    "/article": `<nav>FIELD NOTES</nav><article><h1>A quieter way to explore</h1><p>Ideas, observations, and thoughtful reading after sunset.</p><hr><p>Good design gives the important things space. Afterglow preserves the colors and details that make each website its own.</p><button>Save article</button></article>`,
     "/shopping": `<nav>NORTH STUDIO</nav><h1>Everyday essentials</h1><div class="products"><section><div class="swatch"></div><h2>Desk lamp</h2><p>A warm companion for late nights.</p><button>Add to bag</button></section><section><div class="swatch alt"></div><h2>Notebook</h2><p>Room for your next idea.</p><button>View details</button></section></div>`,
     "/app": `<nav>WORKSPACE / PROJECTS</nav><h1>Today’s work</h1><div class="workspace"><aside>Overview<br><br>Projects<br><br>Library</aside><section><h2>Design review</h2><p>Collect ideas and keep the next steps clear.</p><label>Project name <input value="Afterglow"></label><p><button>Create task</button></p></section></div>`,
   };
@@ -62,11 +62,12 @@ try {
       `--load-extension=${resolve("dist")}`,
     ],
   });
+  const page = await context.newPage();
+  await page.goto(`${base}/light`);
   let worker =
     context.serviceWorkers()[0] ??
     (await context.waitForEvent("serviceworker"));
   const id = new URL(worker.url()).host;
-  const page = await context.newPage();
   const errors = [];
   const invalidationErrors = [];
   page.on("console", (m) => {
@@ -153,115 +154,16 @@ try {
     { tab, url: `${base}/light` },
   );
   await popup.goto(`chrome-extension://${id}/popup.html`);
-  assert.equal(await popup.locator("#accents").isChecked(), false);
-  const button = page.locator(".card button");
-  await button.hover();
-  assert.equal(await button.getAttribute("data-afterglow-accent"), null);
-  await page.evaluate(() => {
-    const style = document.createElement("style");
-    style.textContent =
-      ".card button {box-shadow: 0 3px 4px rgb(40,40,40);outline:2px solid blue;}";
-    document.head.append(style);
-  });
-  await page.waitForTimeout(500);
-  await popup.locator("#accents").check();
-  await page.waitForTimeout(350);
-  const otherHost = await context.newPage();
-  await otherHost.goto(base.replace("localhost", "127.0.0.1") + "/light");
-  await otherHost.waitForTimeout(350);
-  await otherHost.locator(".card button").hover();
-  assert.ok(
-    await otherHost
-      .locator(".card button")
-      .getAttribute("data-afterglow-accent"),
-  );
-
-  await page.mouse.move(0, 0);
-  const original = await button.evaluate((e) => ({
-    shadow: getComputedStyle(e).boxShadow,
-    outline: getComputedStyle(e).outline,
-    rect: JSON.stringify(e.getBoundingClientRect()),
-  }));
-  await button.hover();
-  await page.waitForFunction(() =>
-    document
-      .querySelector(".card button")
-      .hasAttribute("data-afterglow-accent"),
-  );
-  const glowed = await button.evaluate((e) => ({
-    shadow: getComputedStyle(e).boxShadow,
-    outline: getComputedStyle(e).outline,
-    rect: JSON.stringify(e.getBoundingClientRect()),
-  }));
-  assert.ok(glowed.shadow.startsWith(original.shadow));
-  assert.ok(glowed.shadow.includes("185, 174, 245"));
-  assert.equal(glowed.outline, original.outline);
-  assert.equal(glowed.rect, original.rect);
-  await page.screenshot({ path: "accent-preview.png" });
-  await page.mouse.move(0, 0);
-  assert.equal(await button.getAttribute("data-afterglow-accent"), null);
+  assert.equal(await popup.locator("#accents,#saved,footer").count(), 0);
+  await worker.evaluate(() => chrome.storage.local.set({ accents: true }));
+  await page.locator(".card button").hover();
   assert.equal(
-    await button.evaluate((e) => getComputedStyle(e).boxShadow),
-    original.shadow,
+    await page.locator("[data-afterglow-accent],.afterglow-accents").count(),
+    0,
   );
-  await page.locator("input").click();
-  assert.equal(
-    await page.locator("input").getAttribute("data-afterglow-accent"),
-    null,
-  );
-  await page.keyboard.press("Tab");
-  assert.equal(await button.evaluate((e) => e.matches(":focus-visible")), true);
-  assert.ok(await button.getAttribute("data-afterglow-accent"));
-  await page.keyboard.press("Tab");
-  assert.equal(await button.getAttribute("data-afterglow-accent"), null);
-  // Mouse focus alone does not glow; hovering an ordinary text input does not glow either.
-  await button.click();
-  await page.mouse.move(0, 0);
-  assert.equal(await button.getAttribute("data-afterglow-accent"), null);
-  await page.evaluate(() => {
-    const b = document.createElement("button");
-    b.id = "dynamic-button";
-    b.textContent = "Dynamic";
-    document.body.append(b);
-  });
-  await page.locator("#dynamic-button").hover();
-  await page.waitForTimeout(350);
-  assert.ok(
-    await page.locator("#dynamic-button").getAttribute("data-afterglow-accent"),
-  );
-  await page.locator("#dynamic-button").evaluate((e) => (e.disabled = true));
-  await page.waitForTimeout(100);
-  assert.equal(
-    await page.locator("#dynamic-button").getAttribute("data-afterglow-accent"),
-    null,
-  );
-  await popup.locator("#accents").uncheck();
-  await page.waitForTimeout(350);
-  assert.equal(await otherHost.locator(".afterglow-accents").count(), 0);
-  await otherHost.close();
-  assert.equal(await page.locator("[data-afterglow-accent]").count(), 0);
-  assert.equal(await page.locator(".afterglow-accents").count(), 0);
-  await popup.locator("#accents").check();
-  await page.waitForTimeout(350);
-  await second.locator(".card button").hover();
-  await second.waitForTimeout(100);
-  assert.ok(
-    await second.locator(".card button").getAttribute("data-afterglow-accent"),
-  );
-  await page.evaluate(() => document.querySelector("#dynamic-button").remove());
-  await frame.locator(".card button").hover();
-  await frame.waitForTimeout(100);
-  assert.ok(
-    await frame.locator(".card button").getAttribute("data-afterglow-accent"),
-  );
-  console.log(
-    "PASS: opt-in hover/focus glow, original shadows and outlines, no layout shift, dynamic and disabled controls, cross-tab accents",
-  );
-
   await popup.locator("#original").focus();
   await popup.keyboard.press("Space");
   await expectStatus("Disabled");
-  assert.equal(await popup.locator("#accents").isChecked(), true);
   assert.equal(await page.locator(".afterglow-accents").count(), 0);
   await second.waitForTimeout(600);
   assert.equal(
@@ -292,8 +194,6 @@ try {
   await expectStatus("Native dark theme");
   await popup.waitForTimeout(300);
   assert.equal(await popup.locator("#auto").isChecked(), true);
-  assert.equal(await popup.locator("#accents").isChecked(), true);
-  assert.equal(await popup.locator("#accents").isDisabled(), false);
   assert.equal(await page.locator(".afterglow-accents").count(), 0);
   assert.equal(await popup.locator("#hint").textContent(), "");
   await popup.locator("#global").uncheck();
@@ -497,9 +397,10 @@ try {
   );
   worker = await replacement;
   await expectStatus("Afterglow active");
-  await button.hover();
-  await page.waitForTimeout(150);
-  assert.ok(await button.getAttribute("data-afterglow-accent"));
+  assert.equal(
+    await page.locator("[data-afterglow-accent],.afterglow-accents").count(),
+    0,
+  );
   assert.equal(
     await page.evaluate(() => window.afterglowDocumentIdentity),
     "unchanged",
@@ -586,7 +487,9 @@ try {
     (await w.evaluate(() => chrome.storage.local.get(null))).accents,
     true,
   );
-  console.log("PASS: browser restart persistence and global accents");
+  console.log(
+    "PASS: browser restart persistence; retired accent settings remain inert",
+  );
 } finally {
   await context?.close();
   server.close();
