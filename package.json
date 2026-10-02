@@ -1,13 +1,13 @@
 {
   "name": "afterglow",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
     "check": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
-    "test:browser": "npm run build && node tests/browser.mjs"
+    "test:browser": "npm run build && node tests/browser.mjs && node tests/browser-dark.mjs"
   },
   "dependencies": {
     "darkreader": "4.9.133"

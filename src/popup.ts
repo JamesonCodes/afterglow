@@ -72,6 +72,7 @@ async function render() {
     if (current !== revision || pending) return;
     const labels: Record<string, string> = {
       "Afterglow active": "Afterglow’s dark theme is active",
+      "Browser dark theme": "Keeping Chrome’s automatic dark theme",
       "Native dark theme": "Keeping this site’s own dark theme",
       Disabled: "Using the website’s original appearance",
     };

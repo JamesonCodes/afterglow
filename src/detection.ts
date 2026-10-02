@@ -1,6 +1,6 @@
 import { luminance } from "./colors";
 type Color = [number, number, number, number];
-export type NativeTheme = "dark" | "light" | "unknown";
+export type NativeTheme = "dark" | "browser-dark" | "light" | "unknown";
 function rgb(color: string): Color | null {
   const match = color.match(/^rgba?\(([^)]+)\)/);
   if (!match) return null;
@@ -49,6 +49,28 @@ function background(element: Element): Color | null {
   result[3] = 1;
   return result;
 }
+// Chrome resolves Canvas to a dark color under automatic renderer darkening.
+// Force a light scheme on this isolated probe so native dark schemes do not
+// produce a false positive. Never leave probe nodes in the page.
+function browserDarkening(): boolean {
+  if (matchMedia("(forced-colors: active)").matches) return false;
+  const probe = document.createElement("span");
+  probe.className = "afterglow-owned";
+  probe.style.setProperty("all", "initial", "important");
+  for (const [property, value] of Object.entries({
+    display: "none",
+    "background-color": "canvas",
+    "color-scheme": "light",
+  }))
+    probe.style.setProperty(property, value, "important");
+  try {
+    document.documentElement.append(probe);
+    const color = rgb(getComputedStyle(probe).backgroundColor);
+    return !!color && color[3] === 1 && light(color) < 0.32;
+  } finally {
+    probe.remove();
+  }
+}
 export function nativeDark(): NativeTheme {
   if (!document.body || innerWidth <= 0 || innerHeight <= 0) return "unknown";
   // Sample actual visible text rather than a container's unused inherited color.
@@ -88,6 +110,8 @@ export function nativeDark(): NativeTheme {
         y: rect.top + rect.height / 2,
       });
   }
+  const autoDark = browserDarkening();
+  let browserDark = 0;
   let dark = 0,
     total = 0;
   for (const x of [0.2, 0.5, 0.8])
@@ -111,6 +135,12 @@ export function nativeDark(): NativeTheme {
       if (!bg || !fg) continue;
       total++;
       if (darkSurface(bg, fg)) dark++;
+      // Chromium skips surfaces declaring dark support or an explicit opt-out.
+      const scheme = getComputedStyle(e).colorScheme.split(/\s+/);
+      if (autoDark && !scheme.includes("only") && !scheme.includes("dark"))
+        browserDark++;
     }
-  return total ? (dark / total >= 0.6 ? "dark" : "light") : "unknown";
+  if (!total) return "unknown";
+  if (dark / total >= 0.6) return "dark";
+  return browserDark / total >= 0.6 ? "browser-dark" : "light";
 }

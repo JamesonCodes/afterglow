@@ -139,6 +139,8 @@ function observe() {
       "data-color-mode",
       "href",
       "media",
+      "content",
+      "name",
     ],
   });
 }
@@ -158,7 +160,9 @@ function transition() {
         ? "Disabled"
         : detected === "dark"
           ? "Native dark theme"
-          : "Disabled";
+          : detected === "browser-dark"
+            ? "Browser dark theme"
+            : "Disabled";
     return;
   }
   if (!active) {

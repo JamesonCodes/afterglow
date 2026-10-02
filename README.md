@@ -7,7 +7,7 @@
 
 Afterglow brings a comfortable charcoal theme to light websites, preserves existing dark designs, and keeps photos, videos, and canvas content in their original colors. Built as a locally installable Chrome extension, it combines automatic theme detection with simple controls and preferences that stay on your computer.
 
-**Current version:** 0.1.13 · **Distribution:** unpacked extension; Chrome Web Store publication is not included.
+**Current version:** 0.1.14 · **Distribution:** unpacked extension; Chrome Web Store publication is not included.
 
 ## Preview
 
@@ -128,3 +128,5 @@ Dark Reader's inline page proxies are omitted for Manifest V3 compatibility. Its
 Afterglow uses the locally bundled **Dark Reader 4.9.133** dynamic theme engine, Copyright Dark Reader Ltd., under the MIT license. See [THIRD_PARTY_LICENSES.txt](THIRD_PARTY_LICENSES.txt); the build also includes a copy in `dist/`.
 
 The build applies compatibility adjustments for Manifest V3 and stale extension messaging without modifying the installed dependency.
+
+Chrome automatic darkening: Afterglow checks Chrome’s resolved Canvas color and sampled surfaces’ color-scheme declarations before applying its own theme. When browser darkening covers most samples, the popup says “Keeping Chrome’s automatic dark theme.” Site opt-outs and native dark support are respected. This is a rendering heuristic, not access to Chrome flags; browser-version differences and mixed-theme pages may affect detection. No debugger permission, browser setting changes, or network calls are added.
