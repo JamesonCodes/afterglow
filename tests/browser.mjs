@@ -8,7 +8,29 @@ const image =
   'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="red"/></svg>';
 const server = createServer((req, res) => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
+  if (req.url === "/default-canvas") {
+    res.end(
+      "<!doctype html><html><body><p>Ordinary unstyled content</p></body></html>",
+    );
+    return;
+  }
   const dark = req.url === "/dark";
+  if (req.url.startsWith("/layered")) {
+    const dark = req.url !== "/layered-light";
+    res.end(`<!doctype html><html ${dark ? "dark" : ""}><head><style>
+      html{background:white}html[dark]{background:#0f0f0f}
+      body{margin:0;color:#222}html[dark] main{color:#eee}
+      main{min-height:100vh}section{min-height:100vh;background:rgba(120,120,120,.05)}
+      header{height:50px;background:#111;color:white}p{padding:30px;margin:0}
+      video{width:45%;height:180px;background:black}img{width:45%;height:180px}
+      .muted{color:#aaa}button{margin:20px}
+      </style></head><body><main><section><div><div><div><div><div>
+      <header>Navigation</header><p>Native page content</p><p class="muted">Muted secondary text</p>
+      <video></video><img src='${image}'><button>Action</button><input aria-label="Draft">
+      </div></div></div></div></div></section></main></body></html>`);
+    return;
+  }
+
   const previews = {
     "/article": `<nav>FIELD NOTES</nav><article><h1>A quieter way to explore</h1><p>Ideas, observations, and thoughtful reading after sunset.</p><hr><p>Good design gives the important things space. Afterglow adds a gentle light only when you interact.</p><button>Save article</button></article>`,
     "/shopping": `<nav>NORTH STUDIO</nav><h1>Everyday essentials</h1><div class="products"><section><div class="swatch"></div><h2>Desk lamp</h2><p>A warm companion for late nights.</p><button>Add to bag</button></section><section><div class="swatch alt"></div><h2>Notebook</h2><p>Room for your next idea.</p><button>View details</button></section></div>`,
@@ -294,6 +316,44 @@ try {
   await page.evaluate(() => document.body.classList.remove("dark"));
   await expectStatus("Afterglow active");
   await page.evaluate(() => clearInterval(window.afterglowActivity));
+
+  await page.goto(base + "/default-canvas");
+  await expectStatus("Afterglow active");
+  for (const route of ["/layered-youtube", "/layered-linkedin"]) {
+    await page.goto(base + route);
+    await expectStatus("Native dark theme");
+    assert.equal(await page.locator("style.darkreader").count(), 0);
+    assert.equal(await page.locator(".afterglow-accents").count(), 0);
+    assert.equal(
+      await page
+        .locator("html")
+        .evaluate((e) => getComputedStyle(e).backgroundColor),
+      "rgb(15, 15, 15)",
+    );
+    await page.evaluate(() => document.documentElement.removeAttribute("dark"));
+    await expectStatus("Afterglow active");
+    await page.locator("input").fill("Keep this draft");
+    await page.evaluate(() => {
+      history.pushState({}, "", "#route-change");
+      document.documentElement.setAttribute("dark", "");
+    });
+    await expectStatus("Native dark theme");
+    assert.equal(await page.locator("input").inputValue(), "Keep this draft");
+  }
+  await page.goto(base + "/layered-light");
+  await expectStatus("Afterglow active");
+  await page.evaluate(() => {
+    const style = document.createElement("style");
+    style.textContent =
+      "html{background:#121212!important}main{color:#eee!important}";
+    document.head.append(style);
+  });
+  await expectStatus("Native dark theme");
+  await page.goto(base + "/light");
+  await expectStatus("Afterglow active");
+  console.log(
+    "PASS: layered backgrounds, visible text, media exclusion, dark attribute switching, delayed stylesheet theme and SPA draft preservation",
+  );
   await popup.reload();
   await popup.locator("body").screenshot({ path: "popup-preview.png" });
   await page.screenshot({ path: "theme-preview.png" });

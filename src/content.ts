@@ -101,10 +101,14 @@ function observe() {
     subtree: true,
     childList: true,
     attributes: true,
+    characterData: true,
     attributeFilter: [
       "class",
       "style",
+      "dark",
       "data-theme",
+      "data-color-scheme",
+      "color-scheme",
       "data-color-mode",
       "href",
       "media",
@@ -129,7 +133,8 @@ function apply() {
     const native = nativeDark();
     if (!available) status = "Unavailable on this page";
     else if (!effective(settings, host)) status = "Disabled";
-    else if (native) status = "Native dark theme";
+    else if (native === "dark") status = "Native dark theme";
+    else if (native === "unknown") status = "Disabled";
     else {
       enable(
         {
