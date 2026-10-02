@@ -25,6 +25,21 @@ const server = createServer((req, res) => {
     );
     return;
   }
+  if (req.url === "/cross-logo.svg") {
+    res.setHeader("Content-Type", "image/svg+xml");
+    res.end(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="32"><rect x="8" y="6" width="100" height="20" fill="#222"/></svg>',
+    );
+    return;
+  }
+  if (req.url === "/logos") {
+    const mono = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="32"><rect x="8" y="6" width="100" height="20" fill="#222"/></svg>')}`;
+    const multi = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="32"><rect x="8" y="6" width="50" height="20" fill="#222"/><rect x="58" y="6" width="50" height="20" fill="#d32f2f"/></svg>')}`;
+    res.end(
+      `<!doctype html><html><head><style>body{background:white;color:#222;margin:0;min-height:100vh}header{padding:20px;display:flex;gap:20px}header a{display:inline-block}header img{width:120px;height:32px}header .background-logo{width:120px;height:32px;background-image:url('${mono}')}header svg{width:120px;height:32px}.logo path{fill:#222}main{padding:40px}input{background:white;color:black}</style></head><body><header><a href="/"><img id="mono-logo" alt="Monochrome logo" src="${mono}"></a><a href="/"><img id="multi-logo" alt="Multicolor logo" src="${multi}"></a><a href="/"><svg class="logo" aria-label="Airbnb logo" viewBox="0 0 120 32"><g fill="#222"><path d="M8 6H108V26H8Z"/></g></svg></a><a href="/"><img id="cross-logo" alt="Cross-origin logo" src="http://127.0.0.1:${server.address().port}/cross-logo.svg"></a><a href="/"><svg id="filtered-logo" aria-label="Filtered brand logo" style="filter:invert(1) hue-rotate(180deg)" viewBox="0 0 120 32"><path fill="#eee" d="M8 6H108V26H8Z"/></svg></a><span class="wordmark">Gmail</span><div class="background-logo"></div><img class="avatar" alt="Profile avatar" src="${mono}"></header><main><h1>Logo fixtures</h1><p>Readable page with changing content.</p><input aria-label="Draft"><img id="photo" alt="Product photo" src="${multi}"><div id="updates"></div></main></body></html>`,
+    );
+    return;
+  }
   const dark = req.url === "/dark";
   if (req.url.startsWith("/layered")) {
     const dark = req.url !== "/layered-light";
@@ -340,10 +355,225 @@ try {
   await popup.reload();
   await popup.locator("body").screenshot({ path: "popup-preview.png" });
   await page.screenshot({ path: "theme-preview.png" });
+  await page.goto(`${base}/logos`);
+  await expectStatus("Afterglow active");
+  await page.waitForTimeout(500);
+  const logoBox = await page.locator("#mono-logo").boundingBox();
+  assert.equal(
+    await page
+      .locator("#filtered-logo")
+      .evaluate((e) => getComputedStyle(e).filter),
+    "invert(1) hue-rotate(180deg)",
+  );
+  assert.ok(
+    await page.locator("#filtered-logo path").evaluate((e) =>
+      getComputedStyle(e)
+        .fill.match(/\d+/g)
+        .slice(0, 3)
+        .map(Number)
+        .every((v) => v < 70),
+    ),
+  );
+  assert.notEqual(
+    await page
+      .locator("#mono-logo")
+      .evaluate((e) => getComputedStyle(e).filter),
+    "none",
+  );
+  assert.equal(
+    await page
+      .locator("#cross-logo")
+      .evaluate((e) => getComputedStyle(e).filter),
+    "none",
+  );
+  assert.equal(
+    await page.locator("#cross-logo").getAttribute("data-afterglow-logo"),
+    null,
+  );
+  assert.equal(
+    await page.locator("#photo").evaluate((e) => getComputedStyle(e).filter),
+    "none",
+  );
+  assert.equal(
+    await page.locator(".avatar").evaluate((e) => getComputedStyle(e).filter),
+    "none",
+  );
+  assert.equal(await page.locator(".afterglow-logo-backdrop").count(), 1);
+  assert.equal(
+    await page
+      .locator(".afterglow-logo-backdrop")
+      .evaluate((e) => getComputedStyle(e).backgroundColor),
+    "rgb(246, 247, 250)",
+  );
+  assert.equal(
+    await page
+      .locator("#multi-logo")
+      .evaluate((e) => getComputedStyle(e).filter),
+    "none",
+  );
+  await mkdir("logo-previews", { recursive: true });
+  await page.evaluate(
+    () => (document.querySelector(".afterglow-logos").sheet.disabled = true),
+  );
+  await page.screenshot({ path: "logo-previews/before-dark.png" });
+  await page.evaluate(
+    () => (document.querySelector(".afterglow-logos").sheet.disabled = false),
+  );
+  await page.screenshot({ path: "logo-previews/after.png" });
+  // Capture a stable engine node and observe every rendered frame while unrelated
+  // content and local styles change. Repeated measurements must never expose white.
+  await page.evaluate(() => {
+    window.stableTheme = document.querySelector(".darkreader--user-agent");
+    window.lightFrames = 0;
+    window.totalFrames = 0;
+    window.watchFrames = true;
+    const frame = () => {
+      if (!window.watchFrames) return;
+      window.totalFrames++;
+      const c = getComputedStyle(document.body)
+        .backgroundColor.match(/\d+/g)
+        .map(Number);
+      if (c.slice(0, 3).every((v) => v > 200)) window.lightFrames++;
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+    window.updateTimer = setInterval(() => {
+      document.querySelector("#updates").textContent = String(Date.now());
+      document.querySelector("input").classList.toggle("editing");
+    }, 30);
+  });
+  await page.getByLabel("Draft").fill("Retained draft");
+  await page.waitForTimeout(1500);
+  const stable = await page.evaluate(() => {
+    clearInterval(window.updateTimer);
+    window.watchFrames = false;
+    return {
+      same:
+        window.stableTheme ===
+        document.querySelector(".darkreader--user-agent"),
+      light: window.lightFrames,
+      frames: window.totalFrames,
+    };
+  });
+  assert.equal(stable.same, true);
+  assert.equal(stable.light, 0);
+  assert.ok(stable.frames > 10);
+  console.log("STABILITY", stable);
+  await page.evaluate(() => {
+    document.body.style.background = "#181818";
+    document.body.style.color = "#eee";
+  });
+  await page.waitForTimeout(50);
+  await page.evaluate(() => {
+    document.body.style.background = "white";
+    document.body.style.color = "#222";
+  });
+  await page.waitForTimeout(400);
+  await expectStatus("Afterglow active");
+  assert.equal(
+    await page.evaluate(
+      () =>
+        window.stableTheme ===
+        document.querySelector(".darkreader--user-agent"),
+    ),
+    true,
+  );
+  await page.evaluate(() => {
+    window.savedBody = document.body;
+    document.body.remove();
+  });
+  await page.waitForTimeout(400);
+  await expectStatus("Afterglow active");
+  await page.evaluate(() => document.documentElement.append(window.savedBody));
+  await page.waitForTimeout(350);
+  assert.equal(
+    await page.evaluate(
+      () =>
+        window.stableTheme ===
+        document.querySelector(".darkreader--user-agent"),
+    ),
+    true,
+  );
+  assert.equal(await page.getByLabel("Draft").inputValue(), "Retained draft");
+  await page.evaluate(() => {
+    const logo = document.querySelector("#mono-logo");
+    logo.src =
+      "data:image/svg+xml," +
+      encodeURIComponent(
+        decodeURIComponent(logo.src.split(",")[1]).replace("#222", "#111"),
+      );
+  });
+  await page.waitForTimeout(350);
+  assert.deepEqual(await page.locator("#mono-logo").boundingBox(), logoBox);
+  await popup.evaluate(async () =>
+    chrome.runtime.sendMessage({
+      type: "update",
+      scope: "site",
+      host: "localhost",
+      enabled: false,
+    }),
+  );
+  await expectStatus("Disabled");
+  assert.equal(await page.locator(".afterglow-logo-backdrop").count(), 0);
+  assert.equal(await page.locator("[data-afterglow-logo]").count(), 0);
+  assert.equal(
+    await page
+      .locator("#mono-logo")
+      .evaluate((e) => getComputedStyle(e).filter),
+    "none",
+  );
+  await page.screenshot({ path: "logo-previews/before.png" });
+  await popup.evaluate(async () =>
+    chrome.runtime.sendMessage({
+      type: "update",
+      scope: "site",
+      host: "localhost",
+      enabled: true,
+    }),
+  );
+  await expectStatus("Afterglow active");
+  await popup.locator("#global").uncheck();
+  await expectStatus("Disabled");
+  assert.equal(
+    await page
+      .locator(
+        ".afterglow-logos,.afterglow-logo-backdrop,[data-afterglow-logo]",
+      )
+      .count(),
+    0,
+  );
+  await popup.locator("#global").check();
+  await expectStatus("Afterglow active");
+  await page.waitForTimeout(250);
+  await page.evaluate(() => {
+    document.body.style.background = "#181818";
+    document.body.style.color = "#eee";
+  });
+  await expectStatus("Native dark theme");
+  assert.equal(
+    await page
+      .locator(
+        ".afterglow-logos,.afterglow-logo-backdrop,[data-afterglow-logo]",
+      )
+      .count(),
+    0,
+  );
+  await page.evaluate(() => {
+    document.body.style.background = "white";
+    document.body.style.color = "#222";
+  });
+  await expectStatus("Afterglow active");
+  console.log(
+    "PASS: monochrome/multicolor/background logos, photo/avatar preservation, layout, cleanup, drafts and rendered-frame stability",
+  );
+  await page.goto(`${base}/light`);
+  await expectStatus("Afterglow active");
+
   assert.deepEqual(errors, []);
   if (process.env.AFTERGLOW_LIVE_TEST === "1") {
     checkingLive = true;
     for (const url of [
+      "https://airbnb.tech/ai-ml/beyond-the-model-engineering-ai-infra-with-scientific-judgement/",
       "https://en.wikipedia.org/wiki/Moon",
       "https://books.toscrape.com",
       "https://excalidraw.com",
@@ -365,6 +595,53 @@ try {
           ["Afterglow active", "Native dark theme"].includes(liveStatus.status),
         );
         console.log("LIVE", url, liveStatus.status, await page.title());
+        if (url.includes("airbnb.tech")) {
+          // Its initial hero is natively dark. Re-enable on the light article
+          // viewport to exercise the generated theme and the actual brand SVG.
+          await worker.evaluate(() =>
+            chrome.storage.local.set({
+              "site:airbnb.tech": { enabled: false, force: false },
+            }),
+          );
+          await page.waitForTimeout(250);
+          await page.mouse.wheel(0, 700);
+          await page.waitForTimeout(300);
+          await page.screenshot({ path: "logo-previews/airbnb-original.png" });
+          await worker.evaluate(() =>
+            chrome.storage.local.remove("site:airbnb.tech"),
+          );
+          await page.waitForTimeout(1000);
+          const result = await worker.evaluate(
+            (id) =>
+              chrome.tabs.sendMessage(id, { type: "status" }, { frameId: 0 }),
+            liveTab,
+          );
+          console.log("AIRBNB ARTICLE", result.status);
+          const logo = page.locator(".logo svg");
+          console.log(
+            "AIRBNB LOGO",
+            await logo.evaluate((e) => ({
+              color: getComputedStyle(e.querySelector("g path")).fill,
+              corrections: e.querySelectorAll("[data-afterglow-logo]").length,
+            })),
+          );
+          await page.screenshot({ path: "logo-previews/airbnb-after.png" });
+          if (result.status === "Afterglow active") {
+            await page.evaluate(
+              () =>
+                (document.querySelector(".afterglow-logos").sheet.disabled =
+                  true),
+            );
+            await page.screenshot({
+              path: "logo-previews/airbnb-before-dark.png",
+            });
+            await page.evaluate(
+              () =>
+                (document.querySelector(".afterglow-logos").sheet.disabled =
+                  false),
+            );
+          }
+        }
       } catch (e) {
         console.log("LIVE LIMITED", url, e.message);
       }
@@ -392,9 +669,16 @@ try {
     const target =
       i % 3 === 2
         ? base.replace("localhost", "127.0.0.1") + "/light"
-        : base + (i % 3 === 1 ? "/dark" : "/light");
+        : base + (i === 0 ? "/logos" : i % 3 === 1 ? "/dark" : "/light");
     await p.goto(target);
     await p.locator("input").fill(`Unsaved draft ${i}`);
+    p.on("console", (m) => {
+      if (
+        m.type() === "error" &&
+        m.text().includes("Extension context invalidated")
+      )
+        invalidationErrors.push(m.text());
+    });
     let navigations = 0;
     p.on("framenavigated", (f) => {
       if (f === p.mainFrame()) navigations++;
@@ -470,7 +754,8 @@ try {
   // Flag-loaded unpacked extensions are unloaded by runtime.reload in Chromium.
   // Re-register the same bundle to complete the reload in this disposable profile.
   const replacement = context.waitForEvent("serviceworker", {
-    predicate: (w) => w !== worker,
+    predicate: (w) =>
+      w !== worker && w.url().startsWith(`chrome-extension://${id}/`),
     timeout: 15000,
   });
   replacement.catch(() => {});
@@ -519,6 +804,14 @@ try {
     );
     assert.equal(await item.page.locator("input").inputValue(), item.value);
     assert.equal(item.navigations(), 0);
+    if (item.page.url().endsWith("/logos")) {
+      await item.page.waitForTimeout(350);
+      assert.equal(await item.page.locator(".afterglow-logos").count(), 1);
+      assert.equal(
+        await item.page.locator(".afterglow-logo-backdrop").count(),
+        1,
+      );
+    }
   }
   // Repeated recovery requests must not duplicate content scripts or styles.
   const count = await page.locator("style.darkreader").count();
@@ -557,8 +850,12 @@ try {
   const restartedPage = await context.newPage();
   await restartedPage.goto(`${base}/light`);
   const w =
-    context.serviceWorkers()[0] ??
-    (await context.waitForEvent("serviceworker"));
+    context
+      .serviceWorkers()
+      .find((w) => w.url().startsWith(`chrome-extension://${id}/`)) ??
+    (await context.waitForEvent("serviceworker", {
+      predicate: (w) => w.url().startsWith(`chrome-extension://${id}/`),
+    }));
   assert.equal(
     (await w.evaluate(() => chrome.storage.local.get(null))).enabled,
     true,

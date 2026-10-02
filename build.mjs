@@ -23,8 +23,23 @@ const options = {
             throw Error("Dark Reader messaging guard needs review");
           if (!pattern.test(source))
             throw Error("Dark Reader proxy patch needs review");
+          const svgAnalysis =
+            /function shouldAnalyzeSVGAsImage\(svg\) \{[\s\S]*?return shouldAnalyze;\s*\}/;
+          if (
+            !svgAnalysis.test(source) ||
+            !source.includes('"[data-darkreader-inline-invert] {",')
+          )
+            throw Error("Dark Reader SVG analysis guard needs review");
           return {
             contents: source
+              .replace(
+                svgAnalysis,
+                "function shouldAnalyzeSVGAsImage() { return false; }",
+              )
+              .replace(
+                '"[data-darkreader-inline-invert] {",',
+                '"[data-darkreader-inline-invert]:not(svg) {",',
+              )
               .replace(
                 "nativeSendMessage.apply(chrome.runtime, args);",
                 `if (!chrome.runtime.id) return;

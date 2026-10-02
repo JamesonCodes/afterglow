@@ -7,7 +7,7 @@
 
 Afterglow brings a comfortable charcoal theme to light websites, preserves existing dark designs, and keeps photos, videos, and canvas content in their original colors. Built as a locally installable Chrome extension, it combines automatic theme detection with simple controls and preferences that stay on your computer.
 
-**Current version:** 0.1.11 · **Distribution:** unpacked extension; Chrome Web Store publication is not included.
+**Current version:** 0.1.12 · **Distribution:** unpacked extension; Chrome Web Store publication is not included.
 
 ## Preview
 
@@ -87,6 +87,8 @@ The browser suite builds the extension and runs it in a disposable Chromium prof
 - Popup interactions, forms, embedded frames, media colors, and distinct link and status colors.
 - Keyboard operation and removal of retired accent controls and styling.
 - Recovery across ten open tabs, retained form drafts, duplicate-injection safety, and invalid-context errors.
+- Stable engine styles and rendered-frame checks during continuous content updates.
+- Header logo contrast, neutral backdrops, image-color preservation, and cleanup.
 
 Article, shopping, and web-app fixtures generate visual previews in `design-previews/`. To capture an earlier build for comparison, run `AFTERGLOW_DESIGN_BASELINE=1 node tests/browser.mjs` before building the revised theme. This flag changes preview filenames and skips the new color-distinction assertions; it does not alter styling.
 
@@ -115,9 +117,11 @@ The background worker can fetch a website's stylesheets when cross-origin rules 
 
 Chrome internal pages, the Chrome Web Store, and the built-in PDF viewer cannot be themed. Native-dark detection is heuristic; unusual layouts may be misclassified. Select **Original site** when you prefer a website's own appearance.
 
-Closed shadow roots, complex charts, protected embeds, and inaccessible or incorrectly served stylesheets may need individual adjustments. Background images intentionally remain unchanged, so white image backgrounds can still appear bright. Running another dark-mode extension on the same page can cause conflicts.
+Closed shadow roots, complex charts, protected embeds, and inaccessible or incorrectly served stylesheets may need individual adjustments. Photos and ordinary background images remain unchanged, so white image backgrounds can still appear bright. While Afterglow is active, confidently identified small header logos with poor contrast may be corrected: monochrome foregrounds are lightened or darkened, while multicolor logos retain their colors on a neutral backdrop. Inaccessible pixels, ambiguous artwork, gradients, unsupported filters, unusually complex SVGs, unusual stacking, and unrecognized app branding are left alone. Background-logo pixel analysis requires an already-loaded, readable image of the same resource; Afterglow never fetches an image just to analyze it. Running another dark-mode extension on the same page can cause conflicts.
 
-Dark Reader's inline page proxies are omitted for Manifest V3 compatibility. Consequently, some changes made directly through JavaScript stylesheet APIs may not be observed. Local fixtures cover layouts representative of YouTube and LinkedIn; authenticated live pages still require manual verification.
+Theme rechecks temporarily suspend generated styles and restore them in the same task, preserving the running engine. Native-theme changes require two consistent measurements; unknown results preserve the previous state. Startup detection runs promptly when rendering evidence arrives, but Chrome may still display the original page before extension scripts run. Logo corrections are removed in Original mode, while paused, or on native dark sites.
+
+Dark Reader's inline page proxies are omitted for Manifest V3 compatibility. Its separate SVG image-analysis/inversion path is disabled to avoid double inversion and invalid inline-SVG decoding; SVG styling and conservative logo contrast corrections remain active. Consequently, some changes made directly through JavaScript stylesheet APIs may not be observed. Local fixtures cover layouts representative of YouTube and LinkedIn; authenticated live pages still require manual verification.
 
 ## Attribution
 
