@@ -32,6 +32,17 @@ const server = createServer((req, res) => {
     );
     return;
   }
+  if (req.url === "/muted-theme") {
+    res.end(`<!doctype html><html><head><style>
+      :root{--bg:#141413;--ink:#87867f}body{margin:0;background:var(--bg);color:var(--ink)}
+      @media(prefers-color-scheme:light){:root{--bg:#faf9f5;--ink:#7b7a72}}
+      html[data-scheme=dark]{--bg:#141413;--ink:#87867f}
+      html[data-scheme=light]{--bg:#faf9f5;--ink:#7b7a72}
+      main{display:grid;grid-template-columns:repeat(3,1fr);height:100vh}section{display:grid;place-items:center}
+      input{position:fixed;bottom:0;left:0;background:var(--bg);color:var(--ink)}
+      </style></head><body><main>${Array.from({length:9},()=>'<section><p>Muted native text</p></section>').join('')}</main><input aria-label="Native draft"></body></html>`);
+    return;
+  }
   if (req.url === "/logos") {
     const mono = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="32"><rect x="8" y="6" width="100" height="20" fill="#222"/></svg>')}`;
     const multi = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="32"><rect x="8" y="6" width="50" height="20" fill="#222"/><rect x="58" y="6" width="50" height="20" fill="#d32f2f"/></svg>')}`;
@@ -315,6 +326,25 @@ try {
   await expectStatus("Afterglow active");
   await page.evaluate(() => clearInterval(window.afterglowActivity));
 
+  await page.emulateMedia({colorScheme:'dark'});
+  await page.goto(base+'/muted-theme');
+  await expectStatus('Native dark theme');
+  assert.equal(await page.locator('style.darkreader').count(),0);
+  assert.equal(await page.locator('body').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(20, 20, 19)');
+  await page.getByLabel('Native draft').fill('Preserve native draft');
+  await page.evaluate(()=>document.documentElement.setAttribute('data-scheme','light'));
+  await expectStatus('Afterglow active');
+  await page.evaluate(()=>document.documentElement.setAttribute('data-scheme','dark'));
+  await expectStatus('Native dark theme');
+  assert.equal(await page.getByLabel('Native draft').inputValue(),'Preserve native draft');
+  assert.equal(await page.locator('style.darkreader').count(),0);
+  await page.evaluate(()=>document.documentElement.removeAttribute('data-scheme'));
+  await page.emulateMedia({colorScheme:'light'});
+  await expectStatus('Afterglow active');
+  await page.emulateMedia({colorScheme:'dark'});
+  await expectStatus('Native dark theme');
+  await page.emulateMedia({colorScheme:'light'});
+  console.log('PASS: muted native-dark palette, data-scheme changes and system theme switching');
   await page.goto(base + "/default-canvas");
   await expectStatus("Afterglow active");
   for (const route of ["/layered-youtube", "/layered-linkedin"]) {

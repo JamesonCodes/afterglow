@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { contrast } from "../src/logos.ts";
+import { contrast } from "../src/colors.ts";
 test("logo contrast uses linearized luminance and a symmetric ratio", () => {
   assert.equal(contrast([0, 0, 0], [255, 255, 255]), 21);
   assert.equal(contrast([24, 26, 31], [24, 26, 31]), 1);

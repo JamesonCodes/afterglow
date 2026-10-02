@@ -133,6 +133,7 @@ function observe() {
       "style",
       "dark",
       "data-theme",
+      "data-scheme",
       "data-color-scheme",
       "color-scheme",
       "data-color-mode",

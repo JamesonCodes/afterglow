@@ -1,3 +1,4 @@
+import { luminance } from "./colors";
 type Color = [number, number, number, number];
 export type NativeTheme = "dark" | "light" | "unknown";
 function rgb(color: string): Color | null {
@@ -9,6 +10,16 @@ function rgb(color: string): Color | null {
 }
 function light(c: Color): number {
   return (c[0] * 0.2126 + c[1] * 0.7152 + c[2] * 0.0722) / 255;
+}
+// Muted text can be clearly readable without being bright in absolute terms.
+export function darkSurface(bg: Color, fg: Color): boolean {
+  if (light(bg) >= 0.32) return false;
+  const rendered = fg
+    .slice(0, 3)
+    .map((v, i) => v * fg[3] + bg[i] * (1 - fg[3])) as [number, number, number];
+  const backdrop = luminance([bg[0], bg[1], bg[2]]);
+  const foreground = luminance(rendered);
+  return foreground > backdrop && (foreground + 0.05) / (backdrop + 0.05) >= 3;
 }
 const media = "img,video,canvas,picture,svg,iframe,object,embed";
 function surface(element: Element): Element | null {
@@ -99,7 +110,7 @@ export function nativeDark(): NativeTheme {
       const fg = nearest?.color ?? rgb(getComputedStyle(e).color);
       if (!bg || !fg) continue;
       total++;
-      if (light(bg) < 0.32 && light(fg) > 0.55) dark++;
+      if (darkSurface(bg, fg)) dark++;
     }
   return total ? (dark / total >= 0.6 ? "dark" : "light") : "unknown";
 }

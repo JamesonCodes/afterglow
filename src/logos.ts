@@ -1,3 +1,4 @@
+import { contrast, luminance } from "./colors";
 import { ownedMutation } from "./owned-styles";
 type Color = [number, number, number];
 function color(value: string): Color | null {
@@ -7,19 +8,6 @@ function color(value: string): Color | null {
   return a.length >= 3 && a.every(Number.isFinite) && (a[3] ?? 1) >= 0.9
     ? (a.slice(0, 3) as Color)
     : null;
-}
-export function luminance(c: Color): number {
-  return c
-    .map((v) => {
-      v /= 255;
-      return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
-    })
-    .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
-}
-export function contrast(a: Color, b: Color): number {
-  const x = luminance(a),
-    y = luminance(b);
-  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 }
 // Preserve supported site/engine filters while measuring the rendered foreground.
 // Unknown filter pipelines are left untouched rather than guessed.

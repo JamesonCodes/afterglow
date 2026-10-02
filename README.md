@@ -7,7 +7,7 @@
 
 Afterglow brings a comfortable charcoal theme to light websites, preserves existing dark designs, and keeps photos, videos, and canvas content in their original colors. Built as a locally installable Chrome extension, it combines automatic theme detection with simple controls and preferences that stay on your computer.
 
-**Current version:** 0.1.12 · **Distribution:** unpacked extension; Chrome Web Store publication is not included.
+**Current version:** 0.1.13 · **Distribution:** unpacked extension; Chrome Web Store publication is not included.
 
 ## Preview
 
@@ -35,7 +35,7 @@ Lavender `#B9AEF5` appears in the extension's branding. Page styling preserves t
 
 | Area | Implementation |
 | --- | --- |
-| Theme detection | Nine viewport samples resolve transparent and translucent background layers, exclude media colors, and compare visible text against page surfaces. Unrendered pages defer classification. |
+| Theme detection | Nine viewport samples resolve transparent and translucent background layers, exclude media colors, and compare visible text contrast against dark page surfaces, including muted foregrounds. Unrendered pages defer classification. |
 | Dynamic pages | Debounced DOM, stylesheet, and theme-attribute changes trigger reevaluation without continuous polling. Afterglow removes its own theme before measuring original colors. |
 | Settings | `chrome.storage.local` stores global preferences and exact-hostname overrides. Paths share settings; subdomains remain independent. Frames follow the top-level site's preference. |
 | Lifecycle | A background service worker coordinates settings, page status, and recovery. Content-script disposal and duplicate-injection guards handle extension reloads. |
