@@ -18,6 +18,12 @@ Open the toolbar popup and choose **Automatic** to darken light pages while keep
 
 **Afterglow accents** is off by default. Turn it on once to apply across all Afterglow-themed websites: a soft 1px lavender halo and 8px glow on enabled hovered buttons and keyboard-focused links and form controls. Existing shadows, focus outlines, colors, and layout are preserved. Accents appear only with Afterglow’s generated dark theme, never on native dark sites. The global preference stays saved while paused or in Original site mode. Eligible frames also use it. Existing per-site opt-ins migrate to globally enabled accents; a global off choice overrides legacy site values. Shadow-root controls are not covered in this version.
 
+## Theme design
+
+The generated theme uses charcoal `#181A1F` and soft off-white `#E6E8ED` as its baseline. Dark Reader adapts each site's original colors, retaining differences between page backgrounds, cards, menus, fields, secondary text, and disabled controls. Links and button links keep their adapted website colors rather than receiving a universal lavender override. Lavender branding remains in the popup and optional interaction glow. Typography, spacing, borders, and geometry remain under the website's control.
+
+Browser checks generate matching article, shopping, and web-app screenshots in `design-previews/`. To compare with an earlier build, run the same fixtures with `AFTERGLOW_DESIGN_BASELINE=1` before rebuilding the changed theme. The baseline flag skips only new color distinction assertions; it does not change the theme itself.
+
 ## Build and verify
 
 Requires Node.js 22 or newer and desktop Chrome 120 or newer.

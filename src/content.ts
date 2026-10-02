@@ -146,7 +146,7 @@ function apply() {
         },
         {
           ignoreImageAnalysis: ["*"],
-          css: "a { color: #B9AEF5 !important; }",
+          css: "",
           invert: [],
           ignoreInlineStyle: [],
           disableStyleSheetsProxy: true,

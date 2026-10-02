@@ -1,6 +1,6 @@
 import { chromium } from "@playwright/test";
 import { createServer } from "node:http";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import assert from "node:assert/strict";
@@ -37,8 +37,9 @@ const server = createServer((req, res) => {
     "/app": `<nav>WORKSPACE / PROJECTS</nav><h1>Today’s work</h1><div class="workspace"><aside>Overview<br><br>Projects<br><br>Library</aside><section><h2>Design review</h2><p>Collect ideas and keep the next steps clear.</p><label>Project name <input value="Afterglow"></label><p><button>Create task</button></p></section></div>`,
   };
   if (previews[req.url]) {
+    const details = `<p class="muted">Updated today · Secondary information</p><p><a class="brand-link" href="#details">Read details</a> · <a class="alternate-link" href="#guide">View guide</a></p><a class="brand-button" href="#continue">Continue</a><button disabled>Unavailable</button><p class="success">Saved successfully</p><p class="error">Please check the required field</p><label>Notes <input placeholder="Add a note"></label><div class="menu"><span aria-current="page">Overview</span> · Activity</div>`;
     res.end(
-      `<!doctype html><html><head><style>body{font:16px system-ui;margin:0;padding:40px;background:white;color:#222}nav{font-size:12px;color:#666;letter-spacing:2px}h1{font-size:32px}article{max-width:580px;margin:50px auto;line-height:1.7}button,input{font:inherit;padding:12px 20px;background:#eee;color:#222;border:1px solid #999;border-radius:8px}button{cursor:pointer}.products,.workspace{display:flex;gap:30px;margin-top:40px}.products section,.workspace section{padding:24px;border:1px solid #ddd;border-radius:16px;flex:1}.swatch{height:100px;background:#eee;border-radius:10px}.alt{background:#ddd}aside{width:140px;padding-top:20px}</style></head><body>${previews[req.url]}</body></html>`,
+      `<!doctype html><html><head><style>body{font:16px system-ui;margin:0;padding:40px;background:white;color:#222}nav{font-size:12px;color:#666;letter-spacing:2px}h1{font-size:32px}article{max-width:580px;margin:50px auto;line-height:1.7}button,input{font:inherit;padding:12px 20px;background:#eee;color:#222;border:1px solid #999;border-radius:8px}button{cursor:pointer}.products,.workspace{display:flex;gap:30px;margin-top:40px}.products section,.workspace section{padding:24px;border:1px solid #ddd;border-radius:16px;flex:1}.swatch{height:100px;background:#eee;border-radius:10px}.alt{background:#ddd}aside{width:140px;padding-top:20px}.muted{color:#707070}.brand-link{color:#0066cc}.alternate-link{color:#16804b}.brand-button{display:inline-block;background:#0066cc;color:white;padding:12px 20px;border-radius:8px;text-decoration:none}button:disabled{color:#888;background:#ddd}.success{color:#16804b}.error{color:#b42318}.menu{margin-top:20px;padding:16px;background:#eee;border:1px solid #ccc}[aria-current]{font-weight:bold}input::placeholder{color:#777}a:focus-visible{outline:2px solid currentColor}a:hover{text-decoration:underline}</style></head><body>${previews[req.url]}${details}</body></html>`,
     );
     return;
   }
@@ -438,11 +439,39 @@ try {
   const previewPage = await context.newPage({
     viewport: { width: 900, height: 600 },
   });
+  await mkdir("design-previews", { recursive: true });
   for (const kind of ["article", "shopping", "app"]) {
     await previewPage.goto(`${base}/${kind}`);
     await previewPage.waitForTimeout(500);
     await previewPage.locator("button").first().hover();
-    await previewPage.screenshot({ path: `accent-${kind}-preview.png` });
+    if (process.env.AFTERGLOW_DESIGN_BASELINE !== "1") {
+      const colors = await previewPage
+        .locator(".brand-link,.alternate-link,.brand-button,.success,.error")
+        .evaluateAll((es) => es.map((e) => getComputedStyle(e).color));
+      assert.notEqual(
+        colors[0],
+        colors[1],
+        "Distinct link hues survive conversion",
+      );
+      assert.notEqual(
+        colors[2],
+        colors[0],
+        "Button-link text retains its own contrast",
+      );
+      assert.notEqual(
+        colors[3],
+        colors[4],
+        "Success and error remain distinct",
+      );
+      assert.equal(
+        await previewPage.locator("button[disabled]").isDisabled(),
+        true,
+      );
+    }
+    await previewPage.screenshot({
+      path: `design-previews/${process.env.AFTERGLOW_DESIGN_BASELINE === "1" ? "before" : "after"}-${kind}.png`,
+      fullPage: true,
+    });
   }
   await previewPage.close();
   // Reload the extension while the document and old content script stay alive.
