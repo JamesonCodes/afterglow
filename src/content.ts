@@ -1,3 +1,4 @@
+import { siteCSS } from "./site-fixes";
 import { enable, disable, setFetchMethod } from "darkreader";
 import { effective, type Settings } from "./settings";
 import { nativeDark, type NativeTheme } from "./detection";
@@ -181,7 +182,7 @@ function transition() {
       },
       {
         ignoreImageAnalysis: ["*"],
-        css: "",
+        css: siteCSS(location.hostname),
         invert: [],
         ignoreInlineStyle: [".afterglow-owned"],
         disableStyleSheetsProxy: true,
